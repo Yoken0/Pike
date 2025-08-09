@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  pike:
+    build:
+      context: .
+      dockerfile: Dockerfile.simple
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+    env_file:
+      - .env
+    volumes:
+      # Optional: Mount for persistent uploads (if you add file persistence later)
+      - pike_uploads:/app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/api/stats', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add PostgreSQL if you want persistent data
+  # Uncomment below if you switch from in-memory to database storage
+  # postgres:
+  #   image: postgres:15-alpine
+  #   environment:
+  #     POSTGRES_DB: pike
+  #     POSTGRES_USER: pike
+  #     POSTGRES_PASSWORD: pike_password
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   restart: unless-stopped
+  #   ports:
+  #     - "5432:5432"
+
+volumes:
+  pike_uploads:
+  # postgres_data:

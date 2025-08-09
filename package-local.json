@@ -1,0 +1,14 @@
+{
+  "name": "pike-local",
+  "version": "1.0.0",
+  "description": "Pike - AI-powered document assistant with RAG capabilities",
+  "type": "module",
+  "scripts": {
+    "start": "NODE_ENV=development tsx server/index.ts",
+    "dev": "NODE_ENV=development tsx server/index.ts",
+    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "desktop": "concurrently \"npm run dev\" \"wait-on http://localhost:5000 && electron electron/main.js\"",
+    "build-desktop": "npm run build && electron-builder --config electron-builder.config.js"
+  },
+  "main": "server/index.ts"
+}

@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5000 && electron electron/main.js\"",
+    "electron:build": "npm run build && electron-builder --config electron-builder.config.js",
+    "electron:dist": "npm run build && electron-builder --config electron-builder.config.js --publish=never"
+  },
+  "main": "electron/main.js",
+  "homepage": "."
+}
