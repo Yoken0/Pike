@@ -5,7 +5,7 @@ Pike is a RAG-powered personal assistant that autonomously acquires documents an
 ## Features
 
 - **Document Upload**: PDF, text, and markdown file support
-- **AI Chat**: Powered by OpenAI GPT-4o with RAG context
+- **AI Chat**: Powered by Google Cloud Vertex with RAG context
 - **Autonomous Search**: Automatically finds relevant web content
 - **Vector Search**: Similarity search through your knowledge base
 - **Source Citations**: All responses include document references
