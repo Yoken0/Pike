@@ -52,14 +52,14 @@ export default function ContextPanel({ sessionId }: ContextPanelProps) {
   const getRelevanceColor = (relevance: number) => {
     if (relevance >= 80) return "text-emerald-600";
     if (relevance >= 60) return "text-amber-600";
-    return "text-slate-600";
+    return "text-muted-foreground";
   };
 
   return (
     <div className="h-full flex flex-col">
       {/* Panel Header */}
-      <div className="p-4 border-b border-slate-100">
-        <h3 className="text-sm font-medium text-slate-900">Context & Sources</h3>
+      <div className="p-4 border-b border-border">
+        <h3 className="text-sm font-medium text-foreground">Context & Sources</h3>
       </div>
 
       {/* Content */}
@@ -67,11 +67,11 @@ export default function ContextPanel({ sessionId }: ContextPanelProps) {
         {/* Current Query Context */}
         {lastUserMessage && (
           <div>
-            <h4 className="text-xs font-medium text-slate-600 mb-2 uppercase tracking-wide">
+            <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
               Current Query
             </h4>
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <p className="text-sm text-slate-900 line-clamp-3" data-testid="text-current-query">
+            <div className="p-3 bg-accent rounded-lg">
+              <p className="text-sm text-foreground line-clamp-3" data-testid="text-current-query">
                 {lastUserMessage.content}
               </p>
             </div>
@@ -81,24 +81,24 @@ export default function ContextPanel({ sessionId }: ContextPanelProps) {
         {/* Retrieved Documents */}
         {sources.length > 0 && (
           <div>
-            <h4 className="text-xs font-medium text-slate-600 mb-2 uppercase tracking-wide">
+            <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
               Relevant Sources
             </h4>
             <div className="space-y-2">
               {sources.map((source, index) => (
                 <div 
                   key={index}
-                  className="p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                  className="p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors cursor-pointer"
                   data-testid={`source-${index}`}
                 >
                   <div className="flex items-start space-x-2">
                     {getSourceIcon(source.fileType)}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-900 truncate">
+                      <p className="text-sm font-medium text-foreground truncate">
                         {source.filename}
                       </p>
                       {source.url && (
-                        <p className="text-xs text-slate-600 truncate mt-1">
+                        <p className="text-xs text-muted-foreground truncate mt-1">
                           {new URL(source.url).hostname}
                         </p>
                       )}
@@ -117,26 +117,26 @@ export default function ContextPanel({ sessionId }: ContextPanelProps) {
 
         {/* Search Progress */}
         <div>
-          <h4 className="text-xs font-medium text-slate-600 mb-2 uppercase tracking-wide">
+          <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
             Search Status
           </h4>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-700">Vector search</span>
+              <span className="text-sm text-foreground">Vector search</span>
               <span className="text-xs text-emerald-600 flex items-center">
                 <CheckCircle className="w-3 h-3 mr-1" />
                 Complete
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-700">Knowledge retrieval</span>
+              <span className="text-sm text-foreground">Knowledge retrieval</span>
               <span className="text-xs text-emerald-600 flex items-center">
                 <CheckCircle className="w-3 h-3 mr-1" />
                 Complete
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-700">Response generation</span>
+              <span className="text-sm text-foreground">Response generation</span>
               <span className="text-xs text-emerald-600 flex items-center">
                 <CheckCircle className="w-3 h-3 mr-1" />
                 Complete
@@ -147,21 +147,21 @@ export default function ContextPanel({ sessionId }: ContextPanelProps) {
 
         {/* Statistics */}
         <div>
-          <h4 className="text-xs font-medium text-slate-600 mb-2 uppercase tracking-wide">
+          <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
             Session Stats
           </h4>
           <div className="grid grid-cols-2 gap-2 text-center">
-            <div className="p-2 bg-slate-50 rounded">
-              <div className="text-lg font-semibold text-slate-900" data-testid="text-queries-count">
+            <div className="p-2 bg-muted rounded">
+              <div className="text-lg font-semibold text-foreground" data-testid="text-queries-count">
                 {sessionQueries}
               </div>
-              <div className="text-xs text-slate-600">Queries</div>
+              <div className="text-xs text-muted-foreground">Queries</div>
             </div>
-            <div className="p-2 bg-slate-50 rounded">
-              <div className="text-lg font-semibold text-slate-900" data-testid="text-sources-used">
+            <div className="p-2 bg-muted rounded">
+              <div className="text-lg font-semibold text-foreground" data-testid="text-sources-used">
                 {sources.length}
               </div>
-              <div className="text-xs text-slate-600">Sources</div>
+              <div className="text-xs text-muted-foreground">Sources</div>
             </div>
           </div>
         </div>
@@ -169,21 +169,21 @@ export default function ContextPanel({ sessionId }: ContextPanelProps) {
         {/* System Info */}
         {stats && (
           <div>
-            <h4 className="text-xs font-medium text-slate-600 mb-2 uppercase tracking-wide">
+            <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
               System Info
             </h4>
             <div className="space-y-1 text-xs">
               <div className="flex justify-between">
-                <span className="text-slate-600">Total Documents</span>
-                <span className="text-slate-900 font-medium">{stats?.documentsCount || 0}</span>
+                <span className="text-muted-foreground">Total Documents</span>
+                <span className="text-foreground font-medium">{stats?.documentsCount || 0}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-600">Processed</span>
-                <span className="text-slate-900 font-medium">{stats?.processedCount || 0}</span>
+                <span className="text-muted-foreground">Processed</span>
+                <span className="text-foreground font-medium">{stats?.processedCount || 0}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-600">Storage</span>
-                <span className="text-slate-900 font-medium">{stats?.totalSizeMB || '0.0'} MB</span>
+                <span className="text-muted-foreground">Storage</span>
+                <span className="text-foreground font-medium">{stats?.totalSizeMB || '0.0'} MB</span>
               </div>
             </div>
           </div>

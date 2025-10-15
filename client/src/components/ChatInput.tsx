@@ -79,7 +79,7 @@ export default function ChatInput({ sessionId }: ChatInputProps) {
   };
 
   return (
-    <div className="bg-white border-t border-slate-200 p-4">
+    <div className="bg-card border-t border-border p-4">
       <div className="flex items-end space-x-3">
         <div className="flex-1">
           <div className="relative">
@@ -88,14 +88,14 @@ export default function ChatInput({ sessionId }: ChatInputProps) {
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               placeholder="Ask me anything about your documents or request new information..."
-              className="w-full px-4 py-3 pr-12 border border-slate-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm min-h-[44px] max-h-[120px]"
+              className="w-full px-4 py-3 pr-12 border border-border rounded-lg resize-none focus:ring-2 focus:ring-ring focus:border-transparent text-sm min-h-[44px] max-h-[120px] bg-background text-foreground"
               disabled={sendMessageMutation.isPending}
               data-testid="input-message"
             />
             <Button
               variant="ghost"
               size="sm"
-              className="absolute right-2 bottom-2 p-1 h-6 w-6 text-slate-400 hover:text-slate-600"
+              className="absolute right-2 bottom-2 p-1 h-6 w-6 text-muted-foreground hover:text-foreground"
               data-testid="button-attach"
             >
               <Paperclip className="h-3 w-3" />
@@ -104,11 +104,11 @@ export default function ChatInput({ sessionId }: ChatInputProps) {
           
           {/* Quick Actions */}
           <div className="flex items-center justify-between mt-2">
-            <div className="flex items-center space-x-2 text-xs text-slate-500">
+            <div className="flex items-center space-x-2 text-xs text-muted-foreground">
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 px-2 text-xs text-slate-500 hover:text-slate-700"
+                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
                 data-testid="button-web-search"
               >
                 <Search className="w-3 h-3 mr-1" />
@@ -118,14 +118,14 @@ export default function ChatInput({ sessionId }: ChatInputProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 px-2 text-xs text-slate-500 hover:text-slate-700"
+                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
                 data-testid="button-knowledge-search"
               >
                 <Brain className="w-3 h-3 mr-1" />
                 Search knowledge
               </Button>
             </div>
-            <div className="text-xs text-slate-400">
+            <div className="text-xs text-muted-foreground">
               Press Enter to send, Shift+Enter for new line
             </div>
           </div>
@@ -134,7 +134,7 @@ export default function ChatInput({ sessionId }: ChatInputProps) {
         <Button
           onClick={handleSendMessage}
           disabled={!message.trim() || sendMessageMutation.isPending || !sessionId}
-          className="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center justify-center w-10 h-10 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           data-testid="button-send"
         >
           <Send className="h-4 w-4" />

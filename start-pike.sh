@@ -38,8 +38,8 @@ fi
 # Set environment and start the server
 export NODE_ENV=development
 export PORT=3000
-echo "🌐 Starting Pike on http://localhost:3000"
+echo "🌐 Starting Pike on http://localhost:5000"
 echo "📋 Press Ctrl+C to stop"
 echo ""
 
-PORT=3000 npm run dev
+PORT=5000 npm run dev
