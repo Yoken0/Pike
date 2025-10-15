@@ -1,12 +1,16 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
-const path = require('path');
-const { spawn } = require('child_process');
+import { app, BrowserWindow, ipcMain } from 'electron';
+import path from 'path';
+import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 let mainWindow;
 let serverProcess;
 
 const isDev = process.env.NODE_ENV === 'development';
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 
 function createWindow() {
   // Create the browser window
@@ -53,25 +57,8 @@ function createWindow() {
 }
 
 function startServer() {
-  if (isDev) {
-    // In development, start the dev server
-    serverProcess = spawn('npm', ['run', 'dev'], {
-      stdio: 'inherit',
-      shell: true,
-      cwd: path.join(__dirname, '..')
-    });
-  } else {
-    // In production, start the built server
-    serverProcess = spawn('node', ['dist/index.js'], {
-      stdio: 'inherit',
-      shell: true,
-      cwd: path.join(__dirname, '..')
-    });
-  }
-
-  serverProcess.on('error', (err) => {
-    console.error('Failed to start server:', err);
-  });
+  // Don't start server in Electron - assume it's already running
+  console.log('Assuming server is already running on port', PORT);
 }
 
 function stopServer() {

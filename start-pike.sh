@@ -26,18 +26,20 @@ if [ ! -f ".env" ]; then
     echo "📝 Creating .env file..."
     cat > .env << EOF
 NODE_ENV=development
-# Add your OpenAI API key here:
-# OPENAI_API_KEY=your_key_here
+PORT=3000
+# Add your Gemini API key here:
+# GEMINI_API_KEY=your_key_here
 # Optional: Add Serper API key for web search:
 # SERPER_API_KEY=your_key_here
 EOF
-    echo "⚠️  Please add your OpenAI API key to the .env file for full functionality"
+    echo "⚠️  Please add your Gemini API key to the .env file for full functionality"
 fi
 
 # Set environment and start the server
 export NODE_ENV=development
-echo "🌐 Starting Pike on http://localhost:5000"
+export PORT=3000
+echo "🌐 Starting Pike on http://localhost:3000"
 echo "📋 Press Ctrl+C to stop"
 echo ""
 
-npm run dev
+PORT=3000 npm run dev

@@ -6,7 +6,7 @@ import path from 'path';
 const command = process.argv[2];
 
 const scripts = {
-  'dev': 'concurrently "npm run dev" "wait-on http://localhost:5000 && electron electron/main.js"',
+  'dev': 'concurrently "PORT=3000 npm run dev" "wait-on http://localhost:3000 && electron electron/main.js"',
   'build': 'npm run build && electron-builder --config electron-builder.config.js',
   'dist': 'npm run build && electron-builder --config electron-builder.config.js --publish=never'
 };

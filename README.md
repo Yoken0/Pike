@@ -5,7 +5,7 @@ Pike is a RAG-powered personal assistant that autonomously acquires documents an
 ## Features
 
 - **Document Upload**: PDF, text, and markdown file support
-- **AI Chat**: Powered by Google Cloud Vertex with RAG context
+- **AI Chat**: Powered by Google Gemini with RAG context
 - **Autonomous Search**: Automatically finds relevant web content
 - **Vector Search**: Similarity search through your knowledge base
 - **Source Citations**: All responses include document references
@@ -35,16 +35,16 @@ Traditional web development setup.
 
 - **For Docker**: Docker Desktop
 - **For Local/Desktop**: Node.js 18+
-- **For AI Features**: OpenAI API key
+- **For AI Features**: Google Gemini API key
 
 ## API Keys
 
-1. **OpenAI** (required): Get from [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+1. **Google Gemini** (required): Get from [makersuite.google.com/app/apikey](https://makersuite.google.com/app/apikey)
 2. **Serper** (optional): Get from [serper.dev](https://serper.dev) for web search
 
 Add to `.env` file:
 ```env
-OPENAI_API_KEY=your_key_here
+GEMINI_API_KEY=your_key_here
 SERPER_API_KEY=your_key_here
 ```
 
@@ -58,7 +58,7 @@ SERPER_API_KEY=your_key_here
 ## Tech Stack
 
 - **Frontend**: React, TypeScript, Vite, Tailwind CSS
-- **Backend**: Express.js, OpenAI API, Vector Search
+- **Backend**: Express.js, Google Gemini API, Vector Search
 - **Desktop**: Electron with cross-platform builds
 - **Deployment**: Docker, Docker Compose, Native packaging
 

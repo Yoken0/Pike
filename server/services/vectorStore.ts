@@ -1,5 +1,5 @@
 import { storage } from "../storage";
-import { generateEmbedding } from "./openai";
+import { generateEmbedding } from "./gemini";
 import type { VectorChunk, Document } from "@shared/schema";
 
 export interface SearchResult {

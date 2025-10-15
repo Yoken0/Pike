@@ -28,10 +28,29 @@ export default function ChatInput({ sessionId }: ChatInputProps) {
       setMessage("");
     },
     onError: (error) => {
+      // Extract the full error message from the response
+      let errorMessage = error.message;
+      
+      // If it's a JSON error response, try to parse it
+      if (errorMessage.includes('{')) {
+        try {
+          const jsonMatch = errorMessage.match(/\{.*\}/);
+          if (jsonMatch) {
+            const errorObj = JSON.parse(jsonMatch[0]);
+            if (errorObj.error) {
+              errorMessage = errorObj.error;
+            }
+          }
+        } catch (e) {
+          // If parsing fails, use the original message
+        }
+      }
+      
       toast({
         title: "Failed to send message",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
+        duration: 10000, // Show for 10 seconds instead of default
       });
     },
   });

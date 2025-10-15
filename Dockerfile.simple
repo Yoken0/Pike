@@ -5,7 +5,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Install system dependencies
-RUN apk add --no-cache python3 make g++
+RUN apk add --no-cache python3 make g++ bash
 
 # Copy package files
 COPY package*.json ./
@@ -15,6 +15,9 @@ RUN npm install
 
 # Copy source code
 COPY . .
+
+# Build the application
+RUN npm run build
 
 # Set environment
 ENV NODE_ENV=production
@@ -34,5 +37,5 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD node -e "require('http').get('http://localhost:5000/api/stats', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"
 
-# Start without building (run TypeScript directly)
-CMD ["npx", "tsx", "server/index.ts"]
+# Start the application
+CMD ["npm", "start"]

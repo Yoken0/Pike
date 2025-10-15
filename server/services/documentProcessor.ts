@@ -1,5 +1,5 @@
 import { storage } from "../storage";
-import { generateEmbedding } from "./openai";
+import { generateEmbedding } from "./gemini";
 import { searchWeb, scrapeWebContent } from "./webSearch";
 import type { Document, InsertDocument } from "@shared/schema";
 

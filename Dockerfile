@@ -1,15 +1,16 @@
 # Pike - AI-powered document assistant
-FROM node:20-alpine
+FROM node:20-slim as builder
 
 # Set working directory
 WORKDIR /app
 
 # Install system dependencies for better performance
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y \
     python3 \
     make \
     g++ \
-    && rm -rf /var/cache/apk/*
+    && rm -rf /var/lib/apt/lists/* \
+    && npm install -g npm@latest
 
 # Copy package files
 COPY package*.json ./
@@ -20,18 +21,43 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build the application with force to handle rollup issues
-RUN npm run build --force || npm run build
+# Build the application (skip esbuild due to architecture issues)
+RUN npm run build:vite
 
-# Clean up dev dependencies after build
-RUN npm ci --only=production && npm cache clean --force
+# Production stage
+FROM node:20-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies including dev dependencies needed for server
+RUN npm install && npm cache clean --force
+
+# Copy built application from builder stage
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/server ./server
+COPY --from=builder /app/shared ./shared
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/vite.config.ts ./vite.config.ts
 
 # Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S pike -u 1001 -G nodejs
+RUN groupadd -g 1001 nodejs && \
+    useradd -r -u 1001 -g nodejs pike
 
 # Change ownership of app directory
 RUN chown -R pike:nodejs /app
+
+# Set npm cache directory
+RUN mkdir -p /home/pike/.npm && chown -R pike:nodejs /home/pike
+
 USER pike
 
 # Expose port
@@ -42,4 +68,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD node -e "require('http').get('http://localhost:5000/api/stats', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"
 
 # Start the application
-CMD ["npm", "start"]
+CMD ["npx", "tsx", "server/index.ts"]

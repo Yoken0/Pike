@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import multer, { type MulterError } from "multer";
 import { storage } from "./storage";
 import { insertMessageSchema, insertChatSessionSchema } from "@shared/schema";
-import { generateChatResponse } from "./services/openai";
+import { generateChatResponse } from "./services/gemini";
 import { searchKnowledgeBase, formatContextFromResults, extractSourcesFromResults } from "./services/vectorStore";
 import { processUploadedFile, autoAcquireDocuments } from "./services/documentProcessor";
 

@@ -23,9 +23,9 @@ if [ ! -f ".env" ]; then
 # Pike Configuration
 NODE_ENV=production
 
-# Required: OpenAI API Key for AI features
-# Get your key from: https://platform.openai.com/api-keys
-OPENAI_API_KEY=your_openai_key_here
+# Required: Google Gemini API Key for AI features
+# Get your key from: https://makersuite.google.com/app/apikey
+GEMINI_API_KEY=your_gemini_key_here
 
 # Optional: Serper API Key for web search
 # Get your key from: https://serper.dev/
@@ -34,7 +34,7 @@ OPENAI_API_KEY=your_openai_key_here
 # Optional: Custom port (default: 5000)
 # PORT=5000
 EOF
-    echo "⚠️  Please edit .env file and add your OpenAI API key before running Pike"
+    echo "⚠️  Please edit .env file and add your Google Gemini API key before running Pike"
     echo "📝 Opening .env file..."
     
     # Try to open .env in default editor
@@ -53,7 +53,7 @@ fi
 # Function to run Pike
 run_pike() {
     echo "🚀 Starting Pike with Docker..."
-    echo "📍 Pike will be available at: http://localhost:5000"
+    echo "📍 Pike will be available at: http://localhost:3000"
     echo "🛑 Press Ctrl+C to stop"
     echo ""
     
@@ -63,20 +63,20 @@ run_pike() {
     else
         # Fallback to docker run with simple Dockerfile
         echo "Using docker run (docker-compose not found)..."
-        docker build -f Dockerfile.simple -t pike-app .
-        docker run -p 5000:5000 --env-file .env pike-app
+        docker build -f Dockerfile -t pike-app .
+        docker run -p 3000:5000 --env-file .env pike-app
     fi
 }
 
 # Check if API key is set
-if grep -q "your_openai_key_here" .env; then
-    echo "⚠️  Warning: OpenAI API key not set in .env file"
+if grep -q "your_gemini_key_here" .env; then
+    echo "⚠️  Warning: Google Gemini API key not set in .env file"
     echo "   Pike will work but AI features will be disabled"
     echo ""
     echo "Do you want to continue anyway? (y/N)"
     read -r response
     if [[ ! "$response" =~ ^[Yy]$ ]]; then
-        echo "Please edit .env file and add your OpenAI API key"
+        echo "Please edit .env file and add your Google Gemini API key"
         exit 1
     fi
 fi
