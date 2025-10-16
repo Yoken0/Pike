@@ -87,8 +87,8 @@ export default function Chat() {
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 flex">
-          <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex overflow-hidden">
+          <div className="flex-1 flex flex-col overflow-hidden">
             <ChatMessages sessionId={currentSessionId} />
             <ChatInput sessionId={currentSessionId} />
           </div>

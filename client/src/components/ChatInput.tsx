@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Send, Search, Brain, Paperclip } from "lucide-react";
+import { Send, Search, Brain, Paperclip, Upload } from "lucide-react";
 
 interface ChatInputProps {
   sessionId: string;
@@ -12,6 +12,8 @@ interface ChatInputProps {
 
 export default function ChatInput({ sessionId }: ChatInputProps) {
   const [message, setMessage] = useState("");
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -55,6 +57,81 @@ export default function ChatInput({ sessionId }: ChatInputProps) {
     },
   });
 
+  const uploadFileMutation = useMutation({
+    mutationFn: async (file: File) => {
+      console.log('Uploading file:', file.name, file.size, file.type);
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      // Debug: Check if FormData has the file
+      console.log('FormData entries:');
+      for (let [key, value] of formData.entries()) {
+        console.log(key, value);
+      }
+      
+      const response = await fetch('/api/documents/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Upload failed:', response.status, errorText);
+        throw new Error(`${response.status}: ${errorText}`);
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
+      toast({
+        title: "File uploaded successfully",
+        description: "Document is being processed...",
+      });
+    },
+    onError: (error) => {
+      console.error('Upload error:', error);
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleFileUpload = (files: FileList | null) => {
+    console.log('File upload handler called with files:', files);
+    if (!files || files.length === 0) {
+      console.log('No files selected');
+      return;
+    }
+
+    const file = files[0];
+    console.log('Selected file:', file.name, file.size, file.type);
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      toast({
+        title: "File too large",
+        description: "Maximum file size is 10MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log('Starting file upload mutation');
+    uploadFileMutation.mutate(file);
+  };
+
+  const handleAttachFile = () => {
+    console.log('File attach button clicked');
+    if (fileInputRef.current) {
+      console.log('File input found, triggering click');
+      fileInputRef.current.click();
+    } else {
+      console.error('File input ref not found');
+    }
+  };
+
   const handleSendMessage = () => {
     const trimmedMessage = message.trim();
     if (!trimmedMessage || !sessionId) return;
@@ -78,16 +155,42 @@ export default function ChatInput({ sessionId }: ChatInputProps) {
     textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      console.log('File dropped:', files[0].name);
+      handleFileUpload(files);
+    }
+  };
+
   return (
     <div className="bg-card border-t border-border p-4">
       <div className="flex items-end space-x-3">
         <div className="flex-1">
-          <div className="relative">
+          <div 
+            className={`relative ${dragOver ? 'ring-2 ring-primary ring-opacity-50' : ''}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
             <Textarea
               value={message}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              placeholder="Ask me anything about your documents or request new information..."
+              placeholder="Ask me anything about your documents or request new information... (or drag & drop a file)"
               className="w-full px-4 py-3 pr-12 border border-border rounded-lg resize-none focus:ring-2 focus:ring-ring focus:border-transparent text-sm min-h-[44px] max-h-[120px] bg-background text-foreground"
               disabled={sendMessageMutation.isPending}
               data-testid="input-message"
@@ -95,11 +198,37 @@ export default function ChatInput({ sessionId }: ChatInputProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="absolute right-2 bottom-2 p-1 h-6 w-6 text-muted-foreground hover:text-foreground"
+              className="absolute right-2 bottom-2 p-2 h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent z-10 rounded-full"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleAttachFile();
+              }}
+              disabled={uploadFileMutation.isPending}
               data-testid="button-attach"
+              title="Attach file"
+              type="button"
             >
-              <Paperclip className="h-3 w-3" />
+              {uploadFileMutation.isPending ? (
+                <Upload className="h-4 w-4 animate-pulse" />
+              ) : (
+                <Paperclip className="h-4 w-4" />
+              )}
             </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept=".pdf,.txt,.docx,.md,.doc"
+              onChange={(e) => {
+                console.log('File input onChange triggered');
+                const files = e.target.files;
+                handleFileUpload(files);
+                // Reset the input to allow selecting the same file again
+                e.target.value = '';
+              }}
+              data-testid="input-file-attach"
+            />
           </div>
           
           {/* Quick Actions */}
@@ -123,6 +252,33 @@ export default function ChatInput({ sessionId }: ChatInputProps) {
               >
                 <Brain className="w-3 h-3 mr-1" />
                 Search knowledge
+              </Button>
+              <span>•</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                onClick={handleAttachFile}
+                disabled={uploadFileMutation.isPending}
+                data-testid="button-attach-file"
+              >
+                <Paperclip className="w-3 h-3 mr-1" />
+                {uploadFileMutation.isPending ? "Uploading..." : "Attach File"}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  console.log('Testing file upload with test file');
+                  const testFile = new File(['Test content'], 'test.txt', { type: 'text/plain' });
+                  handleFileUpload([testFile] as any);
+                }}
+                disabled={uploadFileMutation.isPending}
+                data-testid="button-test-upload"
+              >
+                <Upload className="w-3 h-3 mr-1" />
+                Test Upload
               </Button>
             </div>
             <div className="text-xs text-muted-foreground">

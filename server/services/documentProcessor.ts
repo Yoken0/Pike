@@ -17,6 +17,11 @@ export async function processUploadedFile(
       fileType = "pdf";
       // For demo purposes, assume PDF content is extracted
       textContent = content.toString("utf-8");
+    } else if (mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || 
+               mimetype === "application/msword") {
+      fileType = "docx";
+      // For demo purposes, assume DOCX content is extracted
+      textContent = content.toString("utf-8");
     } else if (mimetype.startsWith("text/")) {
       fileType = "text";
       textContent = content.toString("utf-8");

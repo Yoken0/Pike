@@ -14,8 +14,19 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
   fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-    const allowedMimes = ['text/plain', 'application/pdf', 'text/markdown'];
-    if (allowedMimes.includes(file.mimetype) || file.mimetype.startsWith('text/')) {
+    const allowedMimes = [
+      'text/plain', 
+      'application/pdf', 
+      'text/markdown',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+      'application/msword', // .doc
+    ];
+    const allowedExtensions = ['.pdf', '.txt', '.docx', '.md', '.doc'];
+    
+    const hasValidMime = allowedMimes.includes(file.mimetype) || file.mimetype.startsWith('text/');
+    const hasValidExtension = allowedExtensions.some(ext => file.originalname.toLowerCase().endsWith(ext));
+    
+    if (hasValidMime || hasValidExtension) {
       cb(null, true);
     } else {
       cb(new Error('Unsupported file type') as any, false);
@@ -37,10 +48,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Upload document
   app.post("/api/documents/upload", upload.single('file'), async (req: Request, res) => {
     try {
+      console.log('Upload request received');
+      console.log('req.file:', req.file);
+      console.log('req.body:', req.body);
+      console.log('Content-Type:', req.headers['content-type']);
+      
       if (!req.file) {
+        console.log('No file found in request');
         return res.status(400).json({ error: "No file uploaded" });
       }
 
+      console.log('Processing file:', req.file.originalname, req.file.size, req.file.mimetype);
       const document = await processUploadedFile(
         req.file.originalname,
         req.file.buffer,
@@ -49,6 +67,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(document);
     } catch (error) {
+      console.error('Upload error:', error);
       res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
     }
   });

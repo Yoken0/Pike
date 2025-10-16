@@ -1,9 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Bot, User, FileText, Globe, File, Info } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Message } from "@shared/schema";
+import 'katex/dist/katex.min.css';
+import { InlineMath, BlockMath } from 'react-katex';
 
 interface ChatMessagesProps {
   sessionId: string;
@@ -31,19 +33,62 @@ export default function ChatMessages({ sessionId }: ChatMessagesProps) {
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    // Only auto-scroll if we're at or near the bottom
+    const container = messagesEndRef.current?.parentElement;
+    if (container) {
+      const isNearBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 100;
+      if (isNearBottom || messages.length <= 1) {
+        scrollToBottom();
+      }
+    }
+  }, [messages.length]); // Only trigger on message count change, not on every message update
 
   const formatTime = (date: Date | string) => {
     return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const getSourceIcon = (fileType: string) => {
+  const renderMathContent = (content: string): React.ReactNode => {
+    // Split content by block math expressions ($$ ... $$)
+    const parts = content.split(/(\$\$.*?\$\$)/g);
+    
+    return parts.map((part, index) => {
+      if (part.startsWith('$$') && part.endsWith('$$')) {
+        // Block math
+        const mathExpression = part.slice(2, -2).trim();
+        try {
+          return (
+            <BlockMath key={index} math={mathExpression} />
+          );
+        } catch (error) {
+          return <span key={index} className="text-red-500">{part}</span>;
+        }
+      } else if (part.includes('$') && !part.startsWith('$')) {
+        // Handle inline math ($ ... $)
+        const inlineParts = part.split(/(\$[^$]*\$)/g);
+        return inlineParts.map((inlinePart, inlineIndex) => {
+          if (inlinePart.startsWith('$') && inlinePart.endsWith('$') && inlinePart.length > 2) {
+            const mathExpression = inlinePart.slice(1, -1).trim();
+            try {
+              return <InlineMath key={`${index}-${inlineIndex}`} math={mathExpression} />;
+            } catch (error) {
+              return <span key={`${index}-${inlineIndex}`} className="text-red-500">{inlinePart}</span>;
+            }
+          }
+          return <span key={`${index}-${inlineIndex}`}>{inlinePart}</span>;
+        });
+      }
+      return <span key={index}>{part}</span>;
+    });
+  };
+
+  const getSourceIcon = (fileType: string): React.ReactNode => {
     switch (fileType) {
       case 'pdf':
         return <File className="w-3 h-3 text-red-500" />;
       case 'web':
         return <Globe className="w-3 h-3 text-blue-500" />;
+      case 'docx':
+        return <FileText className="w-3 h-3 text-blue-600" />;
       default:
         return <FileText className="w-3 h-3 text-green-500" />;
     }
@@ -61,7 +106,7 @@ export default function ChatMessages({ sessionId }: ChatMessagesProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 space-y-6">
+    <div className="flex-1 overflow-y-auto p-6 space-y-6 min-h-0">
       {messages.length === 0 ? (
         <div className="flex justify-center">
           <div className="max-w-md text-center">
@@ -97,9 +142,9 @@ export default function ChatMessages({ sessionId }: ChatMessagesProps) {
                   </div>
                   <div className="flex-1">
                     <div className="bg-card border border-border rounded-2xl rounded-tl-md px-4 py-3 shadow-sm">
-                      <p className="text-sm text-foreground whitespace-pre-wrap" data-testid={`message-assistant-${message.id}`}>
-                        {String(message.content)}
-                      </p>
+                      <div className="text-sm text-foreground whitespace-pre-wrap" data-testid={`message-assistant-${message.id}`}>
+                        {renderMathContent(String(message.content)) as React.ReactNode}
+                      </div>
 
                       {/* Sources Section */}
                       {message.sources && Array.isArray(message.sources) && message.sources.length > 0 && (

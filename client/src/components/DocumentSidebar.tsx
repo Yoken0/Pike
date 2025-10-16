@@ -32,9 +32,27 @@ export default function DocumentSidebar({ onClose, stats }: DocumentSidebarProps
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
+      console.log('Uploading file:', file.name, file.size, file.type);
       const formData = new FormData();
       formData.append('file', file);
-      const response = await apiRequest('POST', '/api/documents/upload', formData);
+      
+      // Debug: Check if FormData has the file
+      console.log('FormData entries:');
+      for (let [key, value] of formData.entries()) {
+        console.log(key, value);
+      }
+      
+      const response = await fetch('/api/documents/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Upload failed:', response.status, errorText);
+        throw new Error(`${response.status}: ${errorText}`);
+      }
+      
       return response.json();
     },
     onSuccess: () => {
@@ -75,11 +93,18 @@ export default function DocumentSidebar({ onClose, stats }: DocumentSidebarProps
   });
 
   const handleFileUpload = (files: FileList) => {
+    console.log('handleFileUpload called with files:', files);
     const file = files[0];
-    if (!file) return;
+    if (!file) {
+      console.log('No file selected');
+      return;
+    }
+
+    console.log('Selected file:', file.name, file.size, file.type);
 
     const maxSize = 10 * 1024 * 1024; // 10MB
     if (file.size > maxSize) {
+      console.log('File too large:', file.size);
       toast({
         title: "File too large",
         description: "Maximum file size is 10MB",
@@ -88,22 +113,36 @@ export default function DocumentSidebar({ onClose, stats }: DocumentSidebarProps
       return;
     }
 
+    console.log('Starting upload mutation for file:', file.name);
     uploadMutation.mutate(file);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setDragOver(true);
   };
 
-  const handleDragLeave = () => {
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setDragOver(false);
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(true);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setDragOver(false);
-    if (e.dataTransfer.files) {
+    
+    console.log('Files dropped:', e.dataTransfer.files);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      console.log('Processing dropped files:', e.dataTransfer.files.length);
       handleFileUpload(e.dataTransfer.files);
     }
   };
@@ -129,6 +168,7 @@ export default function DocumentSidebar({ onClose, stats }: DocumentSidebarProps
     return <TypeIcon className={`text-sm ${
       fileType === 'pdf' ? 'text-red-500' : 
       fileType === 'web' ? 'text-blue-500' : 
+      fileType === 'docx' ? 'text-blue-600' :
       'text-green-500'
     }`} />;
   };
@@ -174,10 +214,14 @@ export default function DocumentSidebar({ onClose, stats }: DocumentSidebarProps
             className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer ${
               dragOver ? 'border-primary bg-primary/10' : 'border-border hover:border-primary'
             }`}
+            onDragEnter={handleDragEnter}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            onClick={() => document.getElementById('file-input')?.click()}
+            onClick={() => {
+              console.log('Upload area clicked');
+              document.getElementById('file-input')?.click();
+            }}
             data-testid="upload-area"
           >
             <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
