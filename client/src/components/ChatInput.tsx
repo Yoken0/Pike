@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import React, { useState, useRef, useCallback, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,7 +10,7 @@ interface ChatInputProps {
   sessionId: string;
 }
 
-export default function ChatInput({ sessionId }: ChatInputProps) {
+const ChatInput = React.memo(({ sessionId }: ChatInputProps) => {
   const [message, setMessage] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -99,7 +99,7 @@ export default function ChatInput({ sessionId }: ChatInputProps) {
     },
   });
 
-  const handleFileUpload = (files: FileList | null) => {
+  const handleFileUpload = useCallback((files: FileList | null) => {
     console.log('File upload handler called with files:', files);
     if (!files || files.length === 0) {
       console.log('No files selected');
@@ -120,9 +120,9 @@ export default function ChatInput({ sessionId }: ChatInputProps) {
 
     console.log('Starting file upload mutation');
     uploadFileMutation.mutate(file);
-  };
+  }, [toast, uploadFileMutation]);
 
-  const handleAttachFile = () => {
+  const handleAttachFile = useCallback(() => {
     console.log('File attach button clicked');
     if (fileInputRef.current) {
       console.log('File input found, triggering click');
@@ -130,42 +130,43 @@ export default function ChatInput({ sessionId }: ChatInputProps) {
     } else {
       console.error('File input ref not found');
     }
-  };
+  }, []);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = useCallback(() => {
     const trimmedMessage = message.trim();
     if (!trimmedMessage || !sessionId) return;
 
     sendMessageMutation.mutate(trimmedMessage);
-  };
+  }, [message, sessionId, sendMessageMutation]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
-  };
+  }, [handleSendMessage]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessage(e.target.value);
     
     // Auto-resize textarea
     const textarea = e.target;
     textarea.style.height = 'auto';
     textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
-  };
+  }, []);
 
-  const handleDragOver = (e: React.DragEvent) => {
+  // Drag and drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(true);
-  };
+  }, []);
 
-  const handleDragLeave = (e: React.DragEvent) => {
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-  };
+  }, []);
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
     
@@ -174,7 +175,7 @@ export default function ChatInput({ sessionId }: ChatInputProps) {
       console.log('File dropped:', files[0].name);
       handleFileUpload(files);
     }
-  };
+  }, [handleFileUpload]);
 
   return (
     <div className="bg-card border-t border-border p-4">
@@ -298,4 +299,6 @@ export default function ChatInput({ sessionId }: ChatInputProps) {
       </div>
     </div>
   );
-}
+});
+
+export default ChatInput;

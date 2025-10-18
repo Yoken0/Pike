@@ -7,11 +7,12 @@ import { generateChatResponse } from "./services/gemini";
 import { searchKnowledgeBase, formatContextFromResults, extractSourcesFromResults } from "./services/vectorStore";
 import { processUploadedFile, autoAcquireDocuments } from "./services/documentProcessor";
 
-// Configure multer for file uploads
+// Configure multer for file uploads with optimized settings
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
+    files: 1, // Only allow one file at a time
   },
   fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     const allowedMimes = [

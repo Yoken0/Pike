@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ interface DocumentSidebarProps {
   };
 }
 
-export default function DocumentSidebar({ onClose, stats }: DocumentSidebarProps) {
+const DocumentSidebar = React.memo(({ onClose, stats }: DocumentSidebarProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const { toast } = useToast();
@@ -92,7 +92,7 @@ export default function DocumentSidebar({ onClose, stats }: DocumentSidebarProps
     },
   });
 
-  const handleFileUpload = (files: FileList) => {
+  const handleFileUpload = useCallback((files: FileList) => {
     console.log('handleFileUpload called with files:', files);
     const file = files[0];
     if (!file) {
@@ -115,27 +115,27 @@ export default function DocumentSidebar({ onClose, stats }: DocumentSidebarProps
 
     console.log('Starting upload mutation for file:', file.name);
     uploadMutation.mutate(file);
-  };
+  }, [toast, uploadMutation]);
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragOver(true);
-  };
+  }, []);
 
-  const handleDragLeave = (e: React.DragEvent) => {
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragOver(false);
-  };
+  }, []);
 
-  const handleDragEnter = (e: React.DragEvent) => {
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragOver(true);
-  };
+  }, []);
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragOver(false);
@@ -145,9 +145,9 @@ export default function DocumentSidebar({ onClose, stats }: DocumentSidebarProps
       console.log('Processing dropped files:', e.dataTransfer.files.length);
       handleFileUpload(e.dataTransfer.files);
     }
-  };
+  }, [handleFileUpload]);
 
-  const handleAutoSearch = () => {
+  const handleAutoSearch = useCallback(() => {
     if (!searchQuery.trim()) {
       toast({
         title: "Search query required",
@@ -159,9 +159,9 @@ export default function DocumentSidebar({ onClose, stats }: DocumentSidebarProps
     
     autoAcquireMutation.mutate(searchQuery.trim());
     setSearchQuery("");
-  };
+  }, [searchQuery, toast, autoAcquireMutation]);
 
-  const getStatusIcon = (status: string, fileType: string) => {
+  const getStatusIcon = useCallback((status: string, fileType: string) => {
     const typeIcon = fileType === 'pdf' ? File : fileType === 'web' ? Globe : FileText;
     const TypeIcon = typeIcon;
     
@@ -171,7 +171,7 @@ export default function DocumentSidebar({ onClose, stats }: DocumentSidebarProps
       fileType === 'docx' ? 'text-blue-600' :
       'text-green-500'
     }`} />;
-  };
+  }, []);
 
   const getStatusBadge = (status: string) => {
     if (status === 'processed') {
@@ -340,4 +340,6 @@ export default function DocumentSidebar({ onClose, stats }: DocumentSidebarProps
       </div>
     </>
   );
-}
+});
+
+export default DocumentSidebar;

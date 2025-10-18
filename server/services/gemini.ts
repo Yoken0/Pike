@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { GoogleGenerativeAI, Content, Part } from "@google/generative-ai";
 
-// Initialize Gemini AI
+// Initialize Gemini AI with explicit API version
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "your-gemini-api-key");
 
 export interface ChatMessage {
@@ -24,7 +24,7 @@ export async function generateChatResponse(
 ): Promise<ChatResponse> {
   try {
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash", 
+      model: "gemini-2.5-flash",
     });
 
     const systemMessage = messages.find(msg => msg.role === "system")?.content;

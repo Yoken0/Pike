@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Bot, User, FileText, Globe, File, Info } from "lucide-react";
@@ -19,7 +19,7 @@ interface Source {
   url?: string;
 }
 
-export default function ChatMessages({ sessionId }: ChatMessagesProps) {
+const ChatMessages = React.memo(({ sessionId }: ChatMessagesProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
@@ -28,9 +28,9 @@ export default function ChatMessages({ sessionId }: ChatMessagesProps) {
     enabled: !!sessionId,
   });
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  }, []);
 
   useEffect(() => {
     // Only auto-scroll if we're at or near the bottom
@@ -41,13 +41,13 @@ export default function ChatMessages({ sessionId }: ChatMessagesProps) {
         scrollToBottom();
       }
     }
-  }, [messages.length]); // Only trigger on message count change, not on every message update
+  }, [messages.length, scrollToBottom]); // Only trigger on message count change, not on every message update
 
-  const formatTime = (date: Date | string) => {
+  const formatTime = useCallback((date: Date | string) => {
     return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
+  }, []);
 
-  const renderMathContent = (content: string): React.ReactNode => {
+  const renderMathContent = useCallback((content: string): React.ReactNode => {
     // Split content by block math expressions ($$ ... $$)
     const parts = content.split(/(\$\$.*?\$\$)/g);
     
@@ -79,9 +79,9 @@ export default function ChatMessages({ sessionId }: ChatMessagesProps) {
       }
       return <span key={index}>{part}</span>;
     });
-  };
+  }, []);
 
-  const getSourceIcon = (fileType: string): React.ReactNode => {
+  const getSourceIcon = useCallback((fileType: string): React.ReactNode => {
     switch (fileType) {
       case 'pdf':
         return <File className="w-3 h-3 text-red-500" />;
@@ -92,7 +92,7 @@ export default function ChatMessages({ sessionId }: ChatMessagesProps) {
       default:
         return <FileText className="w-3 h-3 text-green-500" />;
     }
-  };
+  }, []);
 
   if (!sessionId) {
     return (
@@ -187,4 +187,6 @@ export default function ChatMessages({ sessionId }: ChatMessagesProps) {
       <div ref={messagesEndRef} />
     </div>
   );
-}
+});
+
+export default ChatMessages;
