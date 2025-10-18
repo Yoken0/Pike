@@ -7,12 +7,13 @@ FROM node:20-alpine AS base
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies for better performance
+# Install system dependencies for better performance and native modules
 RUN apk add --no-cache \
     python3 \
     make \
     g++ \
     wget \
+    libc6-compat \
     && npm install -g npm@latest
 
 # Copy package files
@@ -21,8 +22,8 @@ COPY package*.json ./
 # Development stage
 FROM base AS development
 
-    # Install all dependencies including dev dependencies
-    RUN npm install
+# Install all dependencies including dev dependencies
+RUN npm install
 
 # Copy source code
 COPY . .
@@ -40,11 +41,15 @@ RUN mkdir -p /home/pike/.npm && chown -R pike:nodejs /home/pike
 USER pike
 
 # Expose port
-EXPOSE 3000
+EXPOSE 5000
+
+# Set environment variables
+ENV NODE_ENV=development
+ENV PORT=5000
 
 # Health check for development
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/stats || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:5000/api/stats || exit 1
 
 # Start development server with hot reload
 CMD ["npm", "run", "dev"]
@@ -67,17 +72,20 @@ FROM node:20-alpine AS production
 # Set working directory
 WORKDIR /app
 
-# Install only runtime dependencies
+# Install runtime dependencies and native module support
 RUN apk add --no-cache \
     python3 \
     wget \
+    libc6-compat \
     && npm install -g npm@latest
 
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies including vite (needed by server)
-RUN npm ci --only=production && npm install vite && npm cache clean --force
+# Install production dependencies including vite and native modules
+RUN npm ci --only=production && \
+    npm install vite && \
+    npm cache clean --force
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
@@ -100,6 +108,10 @@ USER pike
 
 # Expose port
 EXPOSE 5000
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=5000
 
 # Health check for production
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

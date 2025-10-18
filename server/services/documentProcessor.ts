@@ -2,7 +2,6 @@ import { storage } from "../storage";
 import { generateEmbedding } from "./gemini";
 import { searchWeb, scrapeWebContent } from "./webSearch";
 import type { Document, InsertDocument } from "@shared/schema";
-import * as pdfParse from "pdf-parse";
 import * as mammoth from "mammoth";
 
 export async function processUploadedFile(
@@ -21,7 +20,8 @@ export async function processUploadedFile(
       fileType = "pdf";
       console.log("Extracting PDF content...");
       try {
-        const pdfData = await pdfParse(content);
+        const pdfParse = await import("pdf-parse");
+        const pdfData = await pdfParse.default(content);
         textContent = pdfData.text;
         console.log(`Extracted ${textContent.length} characters from PDF`);
         
