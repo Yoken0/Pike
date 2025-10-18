@@ -63,12 +63,6 @@ const ChatInput = React.memo(({ sessionId }: ChatInputProps) => {
       const formData = new FormData();
       formData.append('file', file);
       
-      // Debug: Check if FormData has the file
-      console.log('FormData entries:');
-      for (let [key, value] of formData.entries()) {
-        console.log(key, value);
-      }
-      
       const response = await fetch('/api/documents/upload', {
         method: 'POST',
         body: formData,
@@ -82,11 +76,12 @@ const ChatInput = React.memo(({ sessionId }: ChatInputProps) => {
       
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
       toast({
         title: "File uploaded successfully",
-        description: "Document is being processed...",
+        description: `${data.filename} is being processed in the background...`,
+        duration: 5000,
       });
     },
     onError: (error) => {
@@ -95,6 +90,7 @@ const ChatInput = React.memo(({ sessionId }: ChatInputProps) => {
         title: "Upload failed",
         description: error.message,
         variant: "destructive",
+        duration: 8000,
       });
     },
   });

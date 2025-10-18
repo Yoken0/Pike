@@ -21,8 +21,8 @@ COPY package*.json ./
 # Development stage
 FROM base AS development
 
-# Install all dependencies including dev dependencies
-RUN npm ci
+    # Install all dependencies including dev dependencies
+    RUN npm install
 
 # Copy source code
 COPY . .

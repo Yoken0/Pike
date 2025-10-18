@@ -2,6 +2,8 @@ import { storage } from "../storage";
 import { generateEmbedding } from "./gemini";
 import { searchWeb, scrapeWebContent } from "./webSearch";
 import type { Document, InsertDocument } from "@shared/schema";
+import * as pdfParse from "pdf-parse";
+import * as mammoth from "mammoth";
 
 export async function processUploadedFile(
   filename: string,
@@ -9,24 +11,52 @@ export async function processUploadedFile(
   mimetype: string
 ): Promise<Document> {
   try {
-    // Convert buffer to text based on file type
+    console.log(`Processing file: ${filename} (${mimetype}, ${content.length} bytes)`);
+    
+    // Extract text content based on file type
     let textContent = "";
     let fileType = "text";
 
     if (mimetype === "application/pdf") {
       fileType = "pdf";
-      // For demo purposes, assume PDF content is extracted
-      textContent = content.toString("utf-8");
+      console.log("Extracting PDF content...");
+      try {
+        const pdfData = await pdfParse(content);
+        textContent = pdfData.text;
+        console.log(`Extracted ${textContent.length} characters from PDF`);
+        
+        // Check if we got meaningful content
+        if (!textContent.trim() || textContent.length < 10) {
+          console.warn("PDF parsing returned empty or very short content, falling back to basic extraction");
+          textContent = content.toString("utf-8");
+        }
+      } catch (error) {
+        console.error("PDF parsing failed:", error);
+        console.log("Falling back to basic text extraction for PDF");
+        textContent = content.toString("utf-8");
+      }
     } else if (mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || 
                mimetype === "application/msword") {
       fileType = "docx";
-      // For demo purposes, assume DOCX content is extracted
-      textContent = content.toString("utf-8");
+      console.log("Extracting DOCX content...");
+      try {
+        const result = await mammoth.extractRawText({ buffer: content });
+        textContent = result.value;
+        console.log(`Extracted ${textContent.length} characters from DOCX`);
+      } catch (error) {
+        console.error("DOCX parsing failed:", error);
+        throw new Error(`Failed to parse DOCX: ${error instanceof Error ? error.message : String(error)}`);
+      }
     } else if (mimetype.startsWith("text/")) {
       fileType = "text";
       textContent = content.toString("utf-8");
+      console.log(`Extracted ${textContent.length} characters from text file`);
     } else {
       throw new Error(`Unsupported file type: ${mimetype}`);
+    }
+
+    if (!textContent.trim()) {
+      throw new Error("No text content could be extracted from the file");
     }
 
     // Create document record
@@ -40,11 +70,16 @@ export async function processUploadedFile(
       url: null,
     });
 
-    // Process document in background
-    processDocumentEmbeddings(document.id, textContent);
+    console.log(`Created document ${document.id}, starting background processing...`);
+
+    // Process document in background (non-blocking)
+    processDocumentEmbeddings(document.id, textContent).catch(error => {
+      console.error(`Background processing failed for document ${document.id}:`, error);
+    });
 
     return document;
   } catch (error) {
+    console.error(`Failed to process file ${filename}:`, error);
     throw new Error(`Failed to process file: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
@@ -94,23 +129,54 @@ async function scrapeAndProcessDocument(documentId: string, url: string): Promis
 
 async function processDocumentEmbeddings(documentId: string, content: string): Promise<void> {
   try {
-    // Split content into chunks
-    const chunks = splitTextIntoChunks(content, 500, 50); // 500 chars with 50 char overlap
+    console.log(`Starting embedding processing for document ${documentId}`);
     
-    // Generate embeddings for each chunk
-    for (const chunk of chunks) {
-      try {
-        const embedding = await generateEmbedding(chunk.text);
-        
-        await storage.createVectorChunk({
-          documentId,
-          content: chunk.text,
-          embedding,
-          startIndex: chunk.start,
-          endIndex: chunk.end,
-        });
-      } catch (error) {
-        console.error(`Failed to process chunk for document ${documentId}:`, error);
+    // Split content into chunks
+    const chunks = splitTextIntoChunks(content, 1000, 100); // Larger chunks (1000 chars) with 100 char overlap
+    console.log(`Split document into ${chunks.length} chunks`);
+    
+    // Process chunks in parallel batches to avoid overwhelming the API
+    const batchSize = 5; // Process 5 chunks at a time
+    const batches = [];
+    
+    for (let i = 0; i < chunks.length; i += batchSize) {
+      batches.push(chunks.slice(i, i + batchSize));
+    }
+    
+    let processedChunks = 0;
+    
+    for (const batch of batches) {
+      console.log(`Processing batch of ${batch.length} chunks (${processedChunks + 1}-${processedChunks + batch.length}/${chunks.length})`);
+      
+      // Process batch in parallel
+      const batchPromises = batch.map(async (chunk) => {
+        try {
+          const embedding = await generateEmbedding(chunk.text);
+          
+          await storage.createVectorChunk({
+            documentId,
+            content: chunk.text,
+            embedding,
+            startIndex: chunk.start,
+            endIndex: chunk.end,
+          });
+          
+          return true;
+        } catch (error) {
+          console.error(`Failed to process chunk for document ${documentId}:`, error);
+          return false;
+        }
+      });
+      
+      const results = await Promise.all(batchPromises);
+      const successCount = results.filter(Boolean).length;
+      processedChunks += batch.length;
+      
+      console.log(`Batch completed: ${successCount}/${batch.length} chunks processed successfully`);
+      
+      // Small delay between batches to avoid rate limiting
+      if (batches.indexOf(batch) < batches.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
 
@@ -120,7 +186,7 @@ async function processDocumentEmbeddings(documentId: string, content: string): P
       processedAt: new Date(),
     });
 
-    console.log(`Successfully processed document ${documentId} with ${chunks.length} chunks`);
+    console.log(`Successfully processed document ${documentId} with ${processedChunks} chunks`);
   } catch (error) {
     console.error(`Failed to process embeddings for document ${documentId}:`, error);
     await storage.updateDocument(documentId, {

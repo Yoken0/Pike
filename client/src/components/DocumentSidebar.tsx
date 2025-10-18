@@ -6,7 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { X, Upload, Search, FileText, Globe, File, Clock, CheckCircle, MoreVertical, Circle } from "lucide-react";
+import { X, Upload, Search, FileText, Globe, File, Clock, CheckCircle, MoreVertical, Circle, Trash2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { Document } from "@shared/schema";
 
 interface DocumentSidebarProps {
@@ -36,12 +42,6 @@ const DocumentSidebar = React.memo(({ onClose, stats }: DocumentSidebarProps) =>
       const formData = new FormData();
       formData.append('file', file);
       
-      // Debug: Check if FormData has the file
-      console.log('FormData entries:');
-      for (let [key, value] of formData.entries()) {
-        console.log(key, value);
-      }
-      
       const response = await fetch('/api/documents/upload', {
         method: 'POST',
         body: formData,
@@ -55,11 +55,12 @@ const DocumentSidebar = React.memo(({ onClose, stats }: DocumentSidebarProps) =>
       
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
       toast({
-        title: "Upload successful",
-        description: "Document is being processed...",
+        title: "File uploaded successfully",
+        description: `${data.filename} is being processed in the background...`,
+        duration: 5000,
       });
     },
     onError: (error) => {
@@ -67,6 +68,7 @@ const DocumentSidebar = React.memo(({ onClose, stats }: DocumentSidebarProps) =>
         title: "Upload failed",
         description: error.message,
         variant: "destructive",
+        duration: 8000,
       });
     },
   });
@@ -88,6 +90,29 @@ const DocumentSidebar = React.memo(({ onClose, stats }: DocumentSidebarProps) =>
         title: "Auto-acquisition failed",
         description: error.message,
         variant: "destructive",
+      });
+    },
+  });
+
+  const deleteDocumentMutation = useMutation({
+    mutationFn: async (documentId: string) => {
+      const response = await apiRequest('DELETE', `/api/documents/${documentId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
+      toast({
+        title: "Document deleted",
+        description: "Document has been removed from the knowledge base.",
+        duration: 3000,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Delete failed",
+        description: error.message,
+        variant: "destructive",
+        duration: 5000,
       });
     },
   });
@@ -160,6 +185,10 @@ const DocumentSidebar = React.memo(({ onClose, stats }: DocumentSidebarProps) =>
     autoAcquireMutation.mutate(searchQuery.trim());
     setSearchQuery("");
   }, [searchQuery, toast, autoAcquireMutation]);
+
+  const handleDeleteDocument = useCallback((documentId: string) => {
+    deleteDocumentMutation.mutate(documentId);
+  }, [deleteDocumentMutation]);
 
   const getStatusIcon = useCallback((status: string, fileType: string) => {
     const typeIcon = fileType === 'pdf' ? File : fileType === 'web' ? Globe : FileText;
@@ -298,14 +327,28 @@ const DocumentSidebar = React.memo(({ onClose, stats }: DocumentSidebarProps) =>
                         {getStatusBadge(doc.status)}
                       </div>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      className="opacity-0 group-hover:opacity-100 transition-all p-1 h-6 w-6"
-                      data-testid={`button-options-${doc.id}`}
-                    >
-                      <MoreVertical className="h-3 w-3" />
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100 transition-all p-1 h-6 w-6"
+                          data-testid={`button-options-${doc.id}`}
+                        >
+                          <MoreVertical className="h-3 w-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteDocument(doc.id)}
+                          className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20"
+                          disabled={deleteDocumentMutation.isPending}
+                        >
+                          <Trash2 className="h-3 w-3 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               ))
