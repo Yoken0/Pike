@@ -4,6 +4,7 @@ import { searchWeb, scrapeWebContent } from "./webSearch";
 import type { Document } from "@shared/schema";
 import * as mammoth from "mammoth";
 import { createHash } from "crypto";
+import { PDFParse } from "pdf-parse";
 
 const EMBEDDING_BATCH_SIZE = 20;
 const CHUNK_SIZE = 1800;
@@ -34,9 +35,9 @@ export async function processUploadedFile(
     if (mimetype === "application/pdf" || lowerFilename.endsWith(".pdf")) {
       fileType = "pdf";
       console.log("Extracting PDF content...");
+      const parser = new PDFParse({ data: content });
       try {
-        const pdfParse = await import("pdf-parse");
-        const pdfData = await pdfParse.default(content);
+        const pdfData = await parser.getText();
         textContent = pdfData.text;
         console.log(`Extracted ${textContent.length} characters from PDF`);
         
@@ -46,6 +47,8 @@ export async function processUploadedFile(
       } catch (error) {
         console.error("PDF parsing failed:", error);
         throw new Error(`Failed to extract PDF text: ${error instanceof Error ? error.message : String(error)}`);
+      } finally {
+        await parser.destroy();
       }
     } else if (mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
                mimetype === "application/msword" || lowerFilename.endsWith(".docx") || lowerFilename.endsWith(".doc")) {
