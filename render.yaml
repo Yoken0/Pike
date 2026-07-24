@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: pike
+    runtime: node
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/stats
+    autoDeploy: true
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: AI_MODEL
+        value: gemini-3.5-flash-lite
+      - key: AI_REQUESTS_PER_MINUTE
+        value: "10"
+      - key: AI_REQUESTS_PER_DAY
+        value: "50"
