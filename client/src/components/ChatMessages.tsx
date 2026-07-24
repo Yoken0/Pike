@@ -15,7 +15,9 @@ export default function ChatMessages({ sessionId }: { sessionId: string }) {
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ["/api/sessions", sessionId, "messages"], enabled: Boolean(sessionId),
   });
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [messages.length]);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length]);
 
   return (
     <div className="message-scroll">
