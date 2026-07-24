@@ -54,7 +54,27 @@ button, textarea, input { color: inherit; font: inherit; }
 .assistant-avatar { width: 29px; height: 29px; flex: 0 0 29px; display:grid; place-items:center; color: hsl(var(--primary)); border: 1px solid hsl(var(--border)); border-radius: 9px; background: hsl(var(--card)); }
 .assistant-avatar svg { width: 14px; }
 .message-meta { margin-bottom: 6px; color: hsl(var(--muted-foreground)); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
-.message-copy { color: hsl(var(--foreground)); font-size: 15px; line-height: 1.75; white-space: pre-wrap; }
+.message-copy { min-width: 0; color: hsl(var(--foreground)); font-size: 15px; line-height: 1.75; overflow-wrap: anywhere; }
+.message-copy > :first-child { margin-top: 0; }
+.message-copy > :last-child { margin-bottom: 0; }
+.message-copy p { margin: 0 0 1em; }
+.message-copy h1,.message-copy h2,.message-copy h3,.message-copy h4 { margin: 1.35em 0 .55em; font-family: 'Manrope','DM Sans',ui-sans-serif,system-ui,sans-serif; font-weight: 700; line-height: 1.25; letter-spacing: -.02em; }
+.message-copy h1 { font-size: 1.5em; }.message-copy h2 { font-size: 1.3em; }.message-copy h3 { font-size: 1.12em; }
+.message-copy ul,.message-copy ol { margin: .65em 0 1em; padding-left: 1.5em; }
+.message-copy li { margin: .3em 0; padding-left: .15em; }.message-copy li > p { margin: 0; }
+.message-copy a { color: hsl(var(--primary)); text-decoration: underline; text-underline-offset: 3px; }
+.message-copy strong { font-weight: 700; }.message-copy del { color: hsl(var(--muted-foreground)); }
+.message-copy blockquote { margin: 1em 0; padding: .15em 0 .15em 1em; border-left: 3px solid hsl(var(--primary)/.55); color: hsl(var(--muted-foreground)); }
+.message-copy blockquote > :last-child { margin-bottom: 0; }
+.message-copy code { padding: .15em .38em; border: 1px solid hsl(var(--border)); border-radius: 5px; background: hsl(var(--muted)); font: .88em/1.5 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; }
+.message-copy pre { max-width: 100%; margin: 1em 0; padding: 14px 16px; overflow-x: auto; border: 1px solid hsl(var(--border)); border-radius: 10px; background: hsl(var(--muted)); }
+.message-copy pre code { padding: 0; border: 0; background: transparent; font-size: 13px; }
+.message-copy table { display: block; width: 100%; margin: 1em 0; overflow-x: auto; border-collapse: collapse; }
+.message-copy th,.message-copy td { padding: 8px 11px; border: 1px solid hsl(var(--border)); text-align: left; vertical-align: top; }
+.message-copy th { background: hsl(var(--muted)); font-weight: 700; }
+.message-copy hr { margin: 1.5em 0; border: 0; border-top: 1px solid hsl(var(--border)); }
+.message-copy input[type="checkbox"] { margin-right: .45em; accent-color: hsl(var(--primary)); }
+.message-copy .katex-display { max-width: 100%; margin: 1em 0; overflow-x: auto; overflow-y: hidden; }
 .source-list { display:flex; gap:6px; flex-wrap:wrap; margin-top:14px; }
 .source-chip { display:flex; align-items:center; gap:5px; padding:6px 8px; border:1px solid hsl(var(--border)); border-radius:8px; color:hsl(var(--muted-foreground)); font-size:11px; background:hsl(var(--card)); }
 .source-chip svg { width:12px; }.source-chip b { color:hsl(var(--primary)); }

@@ -3,7 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { FileText, Sparkles } from "lucide-react";
 import type { Message } from "@shared/schema";
 import "katex/dist/katex.min.css";
-import { BlockMath, InlineMath } from "react-katex";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 
 type Source = { documentId: string; filename: string; relevance: number; fileType: string };
 
@@ -22,7 +25,22 @@ export default function ChatMessages({ sessionId }: { sessionId: string }) {
             {message.role === "assistant" && <div className="assistant-avatar"><Sparkles /></div>}
             <div className="message-content">
               <div className="message-meta">{message.role === "assistant" ? "Pike" : "You"}</div>
-              <div className="message-copy">{renderMath(String(message.content))}</div>
+              <div className="message-copy">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                  components={{
+                    a: ({ children, ...props }) => (
+                      <a {...props} target="_blank" rel="noopener noreferrer">{children}</a>
+                    ),
+                    input: ({ checked, ...props }) => (
+                      <input {...props} checked={checked} disabled />
+                    ),
+                  }}
+                >
+                  {String(message.content)}
+                </ReactMarkdown>
+              </div>
               {message.role === "assistant" && Array.isArray(message.sources) && message.sources.length > 0 && (
                 <div className="source-list">
                   {(message.sources as Source[]).map((source) => (
@@ -54,14 +72,4 @@ function EmptyState() {
       </div>
     </div>
   );
-}
-
-function renderMath(content: string) {
-  return content.split(/(\$\$[\s\S]*?\$\$|\$[^$]+\$)/g).map((part, index) => {
-    try {
-      if (part.startsWith("$$") && part.endsWith("$$")) return <BlockMath key={index} math={part.slice(2, -2)} />;
-      if (part.startsWith("$") && part.endsWith("$")) return <InlineMath key={index} math={part.slice(1, -1)} />;
-    } catch { /* render malformed math as text */ }
-    return <span key={index}>{part}</span>;
-  });
 }
