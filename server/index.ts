@@ -46,12 +46,17 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
+  app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
+    if (res.headersSent) return next(err);
+
+    const status = err.code === "LIMIT_FILE_SIZE"
+      ? 413
+      : err.message === "Unsupported file type"
+        ? 415
+        : err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
-    res.status(status).json({ message });
-    throw err;
+    res.status(status).json({ error: message });
   });
 
   // importantly only setup vite in development and after

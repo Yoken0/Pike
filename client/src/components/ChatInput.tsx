@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowUp, Loader2, Paperclip } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { uploadDocument } from "@/lib/uploadDocument";
 
 export default function ChatInput({ sessionId, quotaRemaining }: { sessionId: string; quotaRemaining?: number }) {
   const [message, setMessage] = useState("");
@@ -21,13 +22,7 @@ export default function ChatInput({ sessionId, quotaRemaining }: { sessionId: st
   });
 
   const upload = useMutation({
-    mutationFn: async (file: File) => {
-      if (file.size > 10 * 1024 * 1024) throw new Error("Files must be 10 MB or smaller.");
-      const body = new FormData(); body.append("file", file);
-      const response = await fetch("/api/documents/upload", { method: "POST", body, credentials: "include" });
-      if (!response.ok) throw new Error((await response.json()).error || "Upload failed");
-      return response.json();
-    },
+    mutationFn: uploadDocument,
     onSuccess: (doc) => {
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
       toast({ title: "Added to your library", description: `${doc.filename} is being indexed.` });
@@ -56,7 +51,17 @@ export default function ChatInput({ sessionId, quotaRemaining }: { sessionId: st
           <button className="icon-action" onClick={() => fileRef.current?.click()} aria-label="Upload a document" disabled={upload.isPending}>
             {upload.isPending ? <Loader2 className="animate-spin" /> : <Paperclip />}
           </button>
-          <input ref={fileRef} className="hidden" type="file" accept=".pdf,.txt,.docx,.md,.doc" onChange={(event) => event.target.files?.[0] && upload.mutate(event.target.files[0])} />
+          <input
+            ref={fileRef}
+            className="hidden"
+            type="file"
+            accept=".pdf,.txt,.docx,.md,.doc"
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0];
+              event.currentTarget.value = "";
+              if (file) upload.mutate(file);
+            }}
+          />
           <span className="composer-hint">{quotaRemaining === 0 ? "Daily limit reached" : `${quotaRemaining ?? "—"} AI requests left today`}</span>
           <button className="send-action" onClick={submit} disabled={!message.trim() || send.isPending || quotaRemaining === 0} aria-label="Send message">
             {send.isPending ? <Loader2 className="animate-spin" /> : <ArrowUp />}

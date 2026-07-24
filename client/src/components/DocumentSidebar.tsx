@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { DocumentSummary } from "@shared/schema";
+import { uploadDocument } from "@/lib/uploadDocument";
 
 interface DocumentSidebarProps {
   onClose: () => void;
@@ -37,25 +38,7 @@ const DocumentSidebar = React.memo(({ onClose, stats }: DocumentSidebarProps) =>
   });
 
   const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
-      console.log('Uploading file:', file.name, file.size, file.type);
-      const formData = new FormData();
-      formData.append('file', file);
-      
-      const response = await fetch('/api/documents/upload', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Upload failed:', response.status, errorText);
-        throw new Error(`${response.status}: ${errorText}`);
-      }
-      
-      return response.json();
-    },
+    mutationFn: uploadDocument,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
       toast({
@@ -119,18 +102,11 @@ const DocumentSidebar = React.memo(({ onClose, stats }: DocumentSidebarProps) =>
   });
 
   const handleFileUpload = useCallback((files: FileList) => {
-    console.log('handleFileUpload called with files:', files);
     const file = files[0];
-    if (!file) {
-      console.log('No file selected');
-      return;
-    }
-
-    console.log('Selected file:', file.name, file.size, file.type);
+    if (!file) return;
 
     const maxSize = 10 * 1024 * 1024; // 10MB
     if (file.size > maxSize) {
-      console.log('File too large:', file.size);
       toast({
         title: "File too large",
         description: "Maximum file size is 10MB",
@@ -139,7 +115,6 @@ const DocumentSidebar = React.memo(({ onClose, stats }: DocumentSidebarProps) =>
       return;
     }
 
-    console.log('Starting upload mutation for file:', file.name);
     uploadMutation.mutate(file);
   }, [toast, uploadMutation]);
 
@@ -166,9 +141,7 @@ const DocumentSidebar = React.memo(({ onClose, stats }: DocumentSidebarProps) =>
     e.stopPropagation();
     setDragOver(false);
     
-    console.log('Files dropped:', e.dataTransfer.files);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      console.log('Processing dropped files:', e.dataTransfer.files.length);
       handleFileUpload(e.dataTransfer.files);
     }
   }, [handleFileUpload]);
@@ -249,7 +222,6 @@ const DocumentSidebar = React.memo(({ onClose, stats }: DocumentSidebarProps) =>
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => {
-              console.log('Upload area clicked');
               document.getElementById('file-input')?.click();
             }}
             data-testid="upload-area"
@@ -261,8 +233,11 @@ const DocumentSidebar = React.memo(({ onClose, stats }: DocumentSidebarProps) =>
               id="file-input"
               type="file" 
               className="hidden" 
-              accept=".pdf,.txt,.docx,.md"
-              onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+              accept=".pdf,.txt,.docx,.md,.doc"
+              onChange={(event) => {
+                if (event.currentTarget.files) handleFileUpload(event.currentTarget.files);
+                event.currentTarget.value = "";
+              }}
               data-testid="input-file"
             />
           </div>
