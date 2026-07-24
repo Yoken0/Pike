@@ -13,7 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Document } from "@shared/schema";
+import type { DocumentSummary } from "@shared/schema";
 
 interface DocumentSidebarProps {
   onClose: () => void;
@@ -31,7 +31,7 @@ const DocumentSidebar = React.memo(({ onClose, stats }: DocumentSidebarProps) =>
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: documents = [] } = useQuery<Document[]>({
+  const { data: documents = [] } = useQuery<DocumentSummary[]>({
     queryKey: ['/api/documents'],
     refetchInterval: 5000, // Refetch every 5 seconds to show processing status
   });
@@ -79,7 +79,7 @@ const DocumentSidebar = React.memo(({ onClose, stats }: DocumentSidebarProps) =>
       const response = await apiRequest('POST', '/api/documents/auto-acquire', { query });
       return response.json();
     },
-    onSuccess: (data: Document[]) => {
+    onSuccess: (data: DocumentSummary[]) => {
       queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
       toast({
         title: "Auto-acquisition started",
@@ -261,7 +261,6 @@ const DocumentSidebar = React.memo(({ onClose, stats }: DocumentSidebarProps) =>
               id="file-input"
               type="file" 
               className="hidden" 
-              multiple 
               accept=".pdf,.txt,.docx,.md"
               onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
               data-testid="input-file"

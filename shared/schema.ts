@@ -13,6 +13,7 @@ export const documents = pgTable("documents", {
   status: text("status").notNull().default("processing"), // processing, processed, failed
   source: text("source").notNull().default("upload"), // upload, web_search
   url: text("url"),
+  contentHash: text("content_hash"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   processedAt: timestamp("processed_at"),
   embedding: jsonb("embedding"), // Store as JSON array
@@ -67,6 +68,7 @@ export const insertVectorChunkSchema = createInsertSchema(vectorChunks).omit({
 });
 
 export type Document = typeof documents.$inferSelect;
+export type DocumentSummary = Omit<Document, "ownerId" | "content" | "contentHash" | "embedding">;
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;

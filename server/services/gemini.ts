@@ -92,6 +92,24 @@ export async function generateEmbedding(text: string, userId: string): Promise<n
   }
 }
 
+export async function generateEmbeddings(texts: string[], userId: string): Promise<number[][]> {
+  if (texts.length === 0) return [];
+
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
+    consumeAiRequest(userId);
+    const result = await model.batchEmbedContents({
+      requests: texts.map(text => ({
+        content: { role: "user", parts: [{ text }] },
+      })),
+    });
+    return result.embeddings.map(embedding => embedding.values);
+  } catch (error) {
+    if (error instanceof AiQuotaError) throw error;
+    throw new Error(`Gemini batch embedding error: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
 export async function generateTitle(content: string, userId: string): Promise<string> {
   try {
     const model = genAI.getGenerativeModel({ model: AI_MODEL });

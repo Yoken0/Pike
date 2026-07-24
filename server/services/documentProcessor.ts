@@ -1,8 +1,13 @@
 import { storage } from "../storage";
-import { generateEmbedding } from "./gemini";
+import { generateEmbeddings } from "./gemini";
 import { searchWeb, scrapeWebContent } from "./webSearch";
-import type { Document, InsertDocument } from "@shared/schema";
+import type { Document } from "@shared/schema";
 import * as mammoth from "mammoth";
+import { createHash } from "crypto";
+
+const EMBEDDING_BATCH_SIZE = 20;
+const CHUNK_SIZE = 1800;
+const CHUNK_OVERLAP = 180;
 
 export async function processUploadedFile(
   filename: string,
@@ -12,12 +17,21 @@ export async function processUploadedFile(
 ): Promise<Document> {
   try {
     console.log(`Processing file: ${filename} (${mimetype}, ${content.length} bytes)`);
+    const contentHash = createHash("sha256").update(content).digest("hex");
+    const existingDocument = await storage.getDocumentByHash(ownerId, contentHash);
+    if (existingDocument && existingDocument.status !== "failed") {
+      return existingDocument;
+    }
+    if (existingDocument) {
+      await storage.deleteDocument(existingDocument.id, ownerId);
+    }
     
     // Extract text content based on file type
     let textContent = "";
     let fileType = "text";
 
-    if (mimetype === "application/pdf") {
+    const lowerFilename = filename.toLowerCase();
+    if (mimetype === "application/pdf" || lowerFilename.endsWith(".pdf")) {
       fileType = "pdf";
       console.log("Extracting PDF content...");
       try {
@@ -26,18 +40,15 @@ export async function processUploadedFile(
         textContent = pdfData.text;
         console.log(`Extracted ${textContent.length} characters from PDF`);
         
-        // Check if we got meaningful content
         if (!textContent.trim() || textContent.length < 10) {
-          console.warn("PDF parsing returned empty or very short content, falling back to basic extraction");
-          textContent = content.toString("utf-8");
+          throw new Error("PDF contains no extractable text");
         }
       } catch (error) {
         console.error("PDF parsing failed:", error);
-        console.log("Falling back to basic text extraction for PDF");
-        textContent = content.toString("utf-8");
+        throw new Error(`Failed to extract PDF text: ${error instanceof Error ? error.message : String(error)}`);
       }
-    } else if (mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || 
-               mimetype === "application/msword") {
+    } else if (mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+               mimetype === "application/msword" || lowerFilename.endsWith(".docx") || lowerFilename.endsWith(".doc")) {
       fileType = "docx";
       console.log("Extracting DOCX content...");
       try {
@@ -48,7 +59,7 @@ export async function processUploadedFile(
         console.error("DOCX parsing failed:", error);
         throw new Error(`Failed to parse DOCX: ${error instanceof Error ? error.message : String(error)}`);
       }
-    } else if (mimetype.startsWith("text/")) {
+    } else if (mimetype.startsWith("text/") || lowerFilename.endsWith(".txt") || lowerFilename.endsWith(".md")) {
       fileType = "text";
       textContent = content.toString("utf-8");
       console.log(`Extracted ${textContent.length} characters from text file`);
@@ -70,6 +81,7 @@ export async function processUploadedFile(
       status: "processing",
       source: "upload",
       url: null,
+      contentHash,
     });
 
     console.log(`Created document ${document.id}, starting background processing...`);
@@ -98,6 +110,7 @@ export async function processWebDocument(url: string, title: string, ownerId: st
       status: "processing",
       source: "web_search",
       url,
+      contentHash: null,
     });
 
     // Scrape content in background
@@ -134,53 +147,32 @@ async function processDocumentEmbeddings(documentId: string, content: string, ow
   try {
     console.log(`Starting embedding processing for document ${documentId}`);
     
-    // Split content into chunks
-    const chunks = splitTextIntoChunks(content, 1000, 100); // Larger chunks (1000 chars) with 100 char overlap
+    const chunks = splitTextIntoChunks(content, CHUNK_SIZE, CHUNK_OVERLAP);
     console.log(`Split document into ${chunks.length} chunks`);
-    
-    // Process chunks in parallel batches to avoid overwhelming the API
-    const batchSize = 5; // Process 5 chunks at a time
-    const batches = [];
-    
-    for (let i = 0; i < chunks.length; i += batchSize) {
-      batches.push(chunks.slice(i, i + batchSize));
-    }
-    
+
     let processedChunks = 0;
-    
-    for (const batch of batches) {
-      console.log(`Processing batch of ${batch.length} chunks (${processedChunks + 1}-${processedChunks + batch.length}/${chunks.length})`);
-      
-      // Process batch in parallel
-      const batchPromises = batch.map(async (chunk) => {
-        try {
-          const embedding = await generateEmbedding(chunk.text, ownerId);
-          
-          await storage.createVectorChunk({
+
+    for (let start = 0; start < chunks.length; start += EMBEDDING_BATCH_SIZE) {
+      const batch = chunks.slice(start, start + EMBEDDING_BATCH_SIZE);
+      console.log(`Embedding chunks ${start + 1}-${start + batch.length}/${chunks.length}`);
+      const embeddings = await generateEmbeddings(batch.map(chunk => chunk.text), ownerId);
+
+      if (embeddings.length !== batch.length) {
+        throw new Error(`Embedding service returned ${embeddings.length} results for ${batch.length} chunks`);
+      }
+
+      await Promise.all(batch.map((chunk, index) => {
+        const embedding = embeddings[index];
+        if (!embedding?.length) throw new Error(`No embedding returned for chunk ${start + index + 1}`);
+        return storage.createVectorChunk({
             documentId,
             content: chunk.text,
             embedding,
             startIndex: chunk.start,
             endIndex: chunk.end,
-          });
-          
-          return true;
-        } catch (error) {
-          console.error(`Failed to process chunk for document ${documentId}:`, error);
-          return false;
-        }
-      });
-      
-      const results = await Promise.all(batchPromises);
-      const successCount = results.filter(Boolean).length;
+        });
+      }));
       processedChunks += batch.length;
-      
-      console.log(`Batch completed: ${successCount}/${batch.length} chunks processed successfully`);
-      
-      // Small delay between batches to avoid rate limiting
-      if (batches.indexOf(batch) < batches.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
     }
 
     // Mark document as processed
@@ -192,6 +184,7 @@ async function processDocumentEmbeddings(documentId: string, content: string, ow
     console.log(`Successfully processed document ${documentId} with ${processedChunks} chunks`);
   } catch (error) {
     console.error(`Failed to process embeddings for document ${documentId}:`, error);
+    await storage.deleteVectorChunksByDocument(documentId);
     await storage.updateDocument(documentId, {
       status: "failed",
     });

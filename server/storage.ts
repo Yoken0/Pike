@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 export interface IStorage {
   // Documents
   getDocument(id: string, ownerId?: string): Promise<Document | undefined>;
+  getDocumentByHash(ownerId: string, contentHash: string): Promise<Document | undefined>;
   getAllDocuments(ownerId: string): Promise<Document[]>;
   createDocument(document: InsertDocument): Promise<Document>;
   updateDocument(id: string, updates: Partial<Document>): Promise<Document | undefined>;
@@ -23,18 +24,21 @@ export interface IStorage {
   // Vector Chunks
   getVectorChunk(id: string): Promise<VectorChunk | undefined>;
   getVectorChunksByDocument(documentId: string): Promise<VectorChunk[]>;
+  deleteVectorChunksByDocument(documentId: string): Promise<void>;
   createVectorChunk(chunk: InsertVectorChunk): Promise<VectorChunk>;
   searchVectorChunks(embedding: number[], ownerId: string, limit?: number): Promise<Array<VectorChunk & { similarity: number }>>;
 }
 
 export class MemStorage implements IStorage {
   private documents: Map<string, Document>;
+  private documentHashes: Map<string, string>;
   private messages: Map<string, Message>;
   private chatSessions: Map<string, ChatSession>;
   private vectorChunks: Map<string, VectorChunk>;
 
   constructor() {
     this.documents = new Map();
+    this.documentHashes = new Map();
     this.messages = new Map();
     this.chatSessions = new Map();
     this.vectorChunks = new Map();
@@ -44,6 +48,11 @@ export class MemStorage implements IStorage {
   async getDocument(id: string, ownerId?: string): Promise<Document | undefined> {
     const document = this.documents.get(id);
     return document && (!ownerId || document.ownerId === ownerId) ? document : undefined;
+  }
+
+  async getDocumentByHash(ownerId: string, contentHash: string): Promise<Document | undefined> {
+    const documentId = this.documentHashes.get(`${ownerId}:${contentHash}`);
+    return documentId ? this.documents.get(documentId) : undefined;
   }
 
   async getAllDocuments(ownerId: string): Promise<Document[]> {
@@ -63,9 +72,11 @@ export class MemStorage implements IStorage {
       status: insertDocument.status || "processing",
       source: insertDocument.source || "upload",
       url: insertDocument.url || null,
+      contentHash: insertDocument.contentHash || null,
       embedding: insertDocument.embedding || null,
     };
     this.documents.set(id, document);
+    if (document.contentHash) this.documentHashes.set(`${document.ownerId}:${document.contentHash}`, id);
     return document;
   }
 
@@ -74,6 +85,10 @@ export class MemStorage implements IStorage {
     if (!document) return undefined;
     
     const updated = { ...document, ...updates };
+    if (document.contentHash && document.contentHash !== updated.contentHash) {
+      this.documentHashes.delete(`${document.ownerId}:${document.contentHash}`);
+    }
+    if (updated.contentHash) this.documentHashes.set(`${updated.ownerId}:${updated.contentHash}`, id);
     this.documents.set(id, updated);
     return updated;
   }
@@ -81,6 +96,7 @@ export class MemStorage implements IStorage {
   async deleteDocument(id: string, ownerId: string): Promise<boolean> {
     const document = this.documents.get(id);
     if (!document || document.ownerId !== ownerId) return false;
+    if (document.contentHash) this.documentHashes.delete(`${ownerId}:${document.contentHash}`);
     this.vectorChunks.forEach((chunk, chunkId) => {
       if (chunk.documentId === id) this.vectorChunks.delete(chunkId);
     });
@@ -152,6 +168,12 @@ export class MemStorage implements IStorage {
   async getVectorChunksByDocument(documentId: string): Promise<VectorChunk[]> {
     return Array.from(this.vectorChunks.values())
       .filter(chunk => chunk.documentId === documentId);
+  }
+
+  async deleteVectorChunksByDocument(documentId: string): Promise<void> {
+    this.vectorChunks.forEach((chunk, chunkId) => {
+      if (chunk.documentId === documentId) this.vectorChunks.delete(chunkId);
+    });
   }
 
   async createVectorChunk(insertChunk: InsertVectorChunk): Promise<VectorChunk> {

@@ -10,7 +10,7 @@ Pike is a focused document-research workspace: add source material, ask question
 
 - Research-first chat with source relevance shown alongside each answer
 - PDF, Markdown, text, DOC, and DOCX ingestion up to 10 MB
-- Semantic retrieval across uploaded and auto-acquired material
+- Batched, duplicate-aware semantic indexing across uploaded and auto-acquired material
 - LaTeX rendering for inline and block equations
 - Light/dark themes and a responsive three-pane workspace
 - Server-enforced AI budgets covering chat, embeddings, and generated titles
@@ -60,8 +60,8 @@ shared/schema.ts        Shared Drizzle/Zod data contracts
 
 Request flow:
 
-1. A document is parsed and split into searchable chunks.
-2. Pike embeds chunks and stores them in the local vector store.
+1. A document is fingerprinted, parsed, and split into searchable chunks; duplicate uploads reuse the existing record.
+2. Pike embeds chunks in efficient batches and stores them in the local vector store.
 3. A question retrieves the closest chunks and assembles grounded context.
 4. The quota guard reserves one outbound request.
 5. Gemini 3.5 Flash-Lite produces an answer; Pike stores it with source metadata.

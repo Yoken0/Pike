@@ -8,10 +8,16 @@ import { AiQuotaError, assertAiQuotaAvailable, getAiQuota } from "./services/aiQ
 import { searchKnowledgeBase, formatContextFromResults, extractSourcesFromResults } from "./services/vectorStore";
 import { processUploadedFile, autoAcquireDocuments } from "./services/documentProcessor";
 import { getUserId } from "./services/userIdentity";
+import type { Document, DocumentSummary } from "@shared/schema";
 
 function withoutOwnerId<T extends { ownerId: string }>(record: T): Omit<T, "ownerId"> {
   const { ownerId: _ownerId, ...publicRecord } = record;
   return publicRecord;
+}
+
+function toDocumentSummary(document: Document): DocumentSummary {
+  const { ownerId: _ownerId, content: _content, contentHash: _contentHash, embedding: _embedding, ...summary } = document;
+  return summary;
 }
 
 // Configure multer for file uploads with optimized settings
@@ -48,7 +54,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = getUserId(req, res);
       const documents = await storage.getAllDocuments(userId);
-      res.json(documents.map(withoutOwnerId));
+      res.json(documents.map(toDocumentSummary));
     } catch (error) {
       res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
     }
@@ -58,17 +64,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/documents/upload", upload.single('file'), async (req: Request, res) => {
     try {
       const userId = getUserId(req, res);
-      console.log('Upload request received');
-      console.log('req.file:', req.file);
-      console.log('req.body:', req.body);
-      console.log('Content-Type:', req.headers['content-type']);
-      
+
       if (!req.file) {
-        console.log('No file found in request');
         return res.status(400).json({ error: "No file uploaded" });
       }
 
-      console.log('Processing file:', req.file.originalname, req.file.size, req.file.mimetype);
+      console.log(`Upload received: ${req.file.originalname} (${req.file.size} bytes)`);
       const document = await processUploadedFile(
         req.file.originalname,
         req.file.buffer,
@@ -76,7 +77,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
       );
 
-      res.json(withoutOwnerId(document));
+      res.json(toDocumentSummary(document));
     } catch (error) {
       console.error('Upload error:', error);
       res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
@@ -94,7 +95,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const documents = await autoAcquireDocuments(query, userId);
-      res.json(documents.map(withoutOwnerId));
+      res.json(documents.map(toDocumentSummary));
     } catch (error) {
       res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
     }
@@ -234,7 +235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const results = await searchKnowledgeBase(query, userId, limit);
-      res.json(results.map(result => ({ ...result, document: withoutOwnerId(result.document) })));
+      res.json(results.map(result => ({ ...result, document: toDocumentSummary(result.document) })));
     } catch (error) {
       res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
     }
