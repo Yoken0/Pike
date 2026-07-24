@@ -8,13 +8,13 @@ export interface SearchResult {
   similarity: number;
 }
 
-export async function searchKnowledgeBase(query: string, limit: number = 5): Promise<SearchResult[]> {
+export async function searchKnowledgeBase(query: string, ownerId: string, limit: number = 5): Promise<SearchResult[]> {
   try {
     // Generate embedding for the query
-    const queryEmbedding = await generateEmbedding(query);
+    const queryEmbedding = await generateEmbedding(query, ownerId);
     
     // Search vector chunks
-    const chunks = await storage.searchVectorChunks(queryEmbedding, limit * 2); // Get more to filter
+    const chunks = await storage.searchVectorChunks(queryEmbedding, ownerId, limit * 2); // Get more to filter
     
     // Get corresponding documents
     const results: SearchResult[] = [];
@@ -26,7 +26,7 @@ export async function searchKnowledgeBase(query: string, limit: number = 5): Pro
         continue;
       }
       
-      const document = await storage.getDocument(chunk.documentId);
+      const document = await storage.getDocument(chunk.documentId, ownerId);
       if (document && document.status === "processed") {
         results.push({
           chunk,

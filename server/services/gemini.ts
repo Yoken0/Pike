@@ -22,6 +22,7 @@ export interface ChatResponse {
 
 export async function generateChatResponse(
   messages: ChatMessage[],
+  userId: string,
   context?: string
 ): Promise<ChatResponse> {
   try {
@@ -56,7 +57,7 @@ export async function generateChatResponse(
       },
     });
 
-    consumeAiRequest();
+    consumeAiRequest(userId);
     const result = await chat.sendMessage(currentMessage.parts);
     const response = result.response;
     const text = response.text();
@@ -75,10 +76,10 @@ export async function generateChatResponse(
   }
 }
 
-export async function generateEmbedding(text: string): Promise<number[]> {
+export async function generateEmbedding(text: string, userId: string): Promise<number[]> {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
-    consumeAiRequest();
+    consumeAiRequest(userId);
     const result = await model.embedContent(text);
     return result.embedding.values;
   } catch (error) {
@@ -91,11 +92,11 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   }
 }
 
-export async function generateTitle(content: string): Promise<string> {
+export async function generateTitle(content: string, userId: string): Promise<string> {
   try {
     const model = genAI.getGenerativeModel({ model: AI_MODEL });
     const prompt = `Generate a short, descriptive title (3-6 words) for this conversation. Respond with only the title, no quotes or extra text.\n\nContent: ${content.slice(0, 500)}`;
-    consumeAiRequest();
+    consumeAiRequest(userId);
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const title = response.text().trim().replace(/["']/g, ""); // Remove quotes

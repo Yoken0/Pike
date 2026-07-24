@@ -45,6 +45,7 @@ const DocumentSidebar = React.memo(({ onClose, stats }: DocumentSidebarProps) =>
       const response = await fetch('/api/documents/upload', {
         method: 'POST',
         body: formData,
+        credentials: 'include',
       });
       
       if (!response.ok) {

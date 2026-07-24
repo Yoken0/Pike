@@ -15,3 +15,5 @@ services:
         value: "10"
       - key: AI_REQUESTS_PER_DAY
         value: "50"
+      - key: USER_ID_SECRET
+        generateValue: true

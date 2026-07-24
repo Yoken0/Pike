@@ -7,7 +7,8 @@ import * as mammoth from "mammoth";
 export async function processUploadedFile(
   filename: string,
   content: Buffer,
-  mimetype: string
+  mimetype: string,
+  ownerId: string,
 ): Promise<Document> {
   try {
     console.log(`Processing file: ${filename} (${mimetype}, ${content.length} bytes)`);
@@ -61,6 +62,7 @@ export async function processUploadedFile(
 
     // Create document record
     const document = await storage.createDocument({
+      ownerId,
       filename,
       content: textContent,
       fileType,
@@ -73,7 +75,7 @@ export async function processUploadedFile(
     console.log(`Created document ${document.id}, starting background processing...`);
 
     // Process document in background (non-blocking)
-    processDocumentEmbeddings(document.id, textContent).catch(error => {
+    processDocumentEmbeddings(document.id, textContent, ownerId).catch(error => {
       console.error(`Background processing failed for document ${document.id}:`, error);
     });
 
@@ -84,10 +86,11 @@ export async function processUploadedFile(
   }
 }
 
-export async function processWebDocument(url: string, title: string): Promise<Document> {
+export async function processWebDocument(url: string, title: string, ownerId: string): Promise<Document> {
   try {
     // Create document record
     const document = await storage.createDocument({
+      ownerId,
       filename: title,
       content: "Processing...",
       fileType: "web",
@@ -98,7 +101,7 @@ export async function processWebDocument(url: string, title: string): Promise<Do
     });
 
     // Scrape content in background
-    scrapeAndProcessDocument(document.id, url);
+    scrapeAndProcessDocument(document.id, url, ownerId);
 
     return document;
   } catch (error) {
@@ -106,7 +109,7 @@ export async function processWebDocument(url: string, title: string): Promise<Do
   }
 }
 
-async function scrapeAndProcessDocument(documentId: string, url: string): Promise<void> {
+async function scrapeAndProcessDocument(documentId: string, url: string, ownerId: string): Promise<void> {
   try {
     const content = await scrapeWebContent(url);
     
@@ -117,7 +120,7 @@ async function scrapeAndProcessDocument(documentId: string, url: string): Promis
     });
 
     // Process embeddings
-    await processDocumentEmbeddings(documentId, content);
+    await processDocumentEmbeddings(documentId, content, ownerId);
   } catch (error) {
     console.error(`Failed to scrape document ${documentId}:`, error);
     await storage.updateDocument(documentId, {
@@ -127,7 +130,7 @@ async function scrapeAndProcessDocument(documentId: string, url: string): Promis
   }
 }
 
-async function processDocumentEmbeddings(documentId: string, content: string): Promise<void> {
+async function processDocumentEmbeddings(documentId: string, content: string, ownerId: string): Promise<void> {
   try {
     console.log(`Starting embedding processing for document ${documentId}`);
     
@@ -151,7 +154,7 @@ async function processDocumentEmbeddings(documentId: string, content: string): P
       // Process batch in parallel
       const batchPromises = batch.map(async (chunk) => {
         try {
-          const embedding = await generateEmbedding(chunk.text);
+          const embedding = await generateEmbedding(chunk.text, ownerId);
           
           await storage.createVectorChunk({
             documentId,
@@ -222,7 +225,7 @@ function splitTextIntoChunks(text: string, chunkSize: number, overlap: number): 
   return chunks.filter(chunk => chunk.text.length > 0);
 }
 
-export async function autoAcquireDocuments(query: string): Promise<Document[]> {
+export async function autoAcquireDocuments(query: string, ownerId: string): Promise<Document[]> {
   try {
     // Search web for relevant documents
     const searchResults = await searchWeb(query, 3);
@@ -231,7 +234,7 @@ export async function autoAcquireDocuments(query: string): Promise<Document[]> {
     
     for (const result of searchResults) {
       try {
-        const document = await processWebDocument(result.url, result.title);
+        const document = await processWebDocument(result.url, result.title, ownerId);
         documents.push(document);
       } catch (error) {
         console.error(`Failed to process search result ${result.url}:`, error);

@@ -37,13 +37,16 @@ Open `http://localhost:5000`. Data is currently held in memory, so documents and
 | --- | --- | --- |
 | `GEMINI_API_KEY` | required | Google Generative AI credential |
 | `AI_MODEL` | `gemini-3.5-flash-lite` | Chat and title model |
-| `AI_REQUESTS_PER_MINUTE` | `10` | Process-wide burst ceiling |
-| `AI_REQUESTS_PER_DAY` | `50` | Process-wide daily ceiling (UTC) |
+| `AI_REQUESTS_PER_MINUTE` | `10` | Per-user burst ceiling |
+| `AI_REQUESTS_PER_DAY` | `50` | Per-user daily ceiling (UTC) |
+| `USER_ID_SECRET` | Random at startup | Secret used to sign anonymous user identity cookies |
 | `PORT` | `5000` | HTTP server port |
 
 The limiter runs immediately before every outbound AI request. It therefore covers more than the chat route: document embeddings and title generation consume the same allowance. When a limit is reached, the API responds with HTTP `429` and a `Retry-After` header. The workspace displays the remaining daily budget.
 
-The counters are intentionally process-local for a simple public demo. For multi-instance production hosting, replace the in-memory counters in `server/services/aiQuota.ts` with a shared Redis-backed limiter so every instance sees one budget.
+Each browser receives a signed, HttpOnly anonymous identity cookie. Documents, conversations, retrieval, stats, and AI limits are isolated by that identity; IP addresses are deliberately not used because they are often shared or unstable. Set a stable `USER_ID_SECRET` in production so identities remain valid across restarts. The per-user counters are still process-local; for multi-instance production hosting, replace the in-memory counters in `server/services/aiQuota.ts` with a shared Redis-backed limiter.
+
+This provides browser-level isolation without requiring an account. If the same person must retain access across browsers or devices, or if multiple people share one browser profile, add account authentication and use the authenticated account ID as `ownerId`.
 
 ## Architecture
 
@@ -81,7 +84,7 @@ Deploy the full repository to a Node.js host instead:
 - Build command: `npm ci && npm run build`
 - Start command: `npm start`
 - Required secret: `GEMINI_API_KEY`
-- Optional variables: `AI_MODEL`, `PORT`, `AI_REQUESTS_PER_MINUTE`, `AI_REQUESTS_PER_DAY`
+- Optional variables: `AI_MODEL`, `PORT`, `AI_REQUESTS_PER_MINUTE`, `AI_REQUESTS_PER_DAY`, `USER_ID_SECRET`
 - Health check: `/api/stats`
 
 ### Render

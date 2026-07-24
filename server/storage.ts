@@ -3,28 +3,28 @@ import { randomUUID } from "crypto";
 
 export interface IStorage {
   // Documents
-  getDocument(id: string): Promise<Document | undefined>;
-  getAllDocuments(): Promise<Document[]>;
+  getDocument(id: string, ownerId?: string): Promise<Document | undefined>;
+  getAllDocuments(ownerId: string): Promise<Document[]>;
   createDocument(document: InsertDocument): Promise<Document>;
   updateDocument(id: string, updates: Partial<Document>): Promise<Document | undefined>;
-  deleteDocument(id: string): Promise<boolean>;
+  deleteDocument(id: string, ownerId: string): Promise<boolean>;
 
   // Messages
   getMessage(id: string): Promise<Message | undefined>;
-  getMessagesBySession(sessionId: string): Promise<Message[]>;
+  getMessagesBySession(sessionId: string, ownerId: string): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
 
   // Chat Sessions
-  getChatSession(id: string): Promise<ChatSession | undefined>;
-  getAllChatSessions(): Promise<ChatSession[]>;
-  createChatSession(session: InsertChatSession): Promise<ChatSession>;
+  getChatSession(id: string, ownerId?: string): Promise<ChatSession | undefined>;
+  getAllChatSessions(ownerId: string): Promise<ChatSession[]>;
+  createChatSession(session: InsertChatSession, id?: string): Promise<ChatSession>;
   updateChatSession(id: string, updates: Partial<ChatSession>): Promise<ChatSession | undefined>;
 
   // Vector Chunks
   getVectorChunk(id: string): Promise<VectorChunk | undefined>;
   getVectorChunksByDocument(documentId: string): Promise<VectorChunk[]>;
   createVectorChunk(chunk: InsertVectorChunk): Promise<VectorChunk>;
-  searchVectorChunks(embedding: number[], limit?: number): Promise<Array<VectorChunk & { similarity: number }>>;
+  searchVectorChunks(embedding: number[], ownerId: string, limit?: number): Promise<Array<VectorChunk & { similarity: number }>>;
 }
 
 export class MemStorage implements IStorage {
@@ -41,12 +41,13 @@ export class MemStorage implements IStorage {
   }
 
   // Documents
-  async getDocument(id: string): Promise<Document | undefined> {
-    return this.documents.get(id);
+  async getDocument(id: string, ownerId?: string): Promise<Document | undefined> {
+    const document = this.documents.get(id);
+    return document && (!ownerId || document.ownerId === ownerId) ? document : undefined;
   }
 
-  async getAllDocuments(): Promise<Document[]> {
-    return Array.from(this.documents.values()).sort((a, b) => 
+  async getAllDocuments(ownerId: string): Promise<Document[]> {
+    return Array.from(this.documents.values()).filter(document => document.ownerId === ownerId).sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }
@@ -77,7 +78,12 @@ export class MemStorage implements IStorage {
     return updated;
   }
 
-  async deleteDocument(id: string): Promise<boolean> {
+  async deleteDocument(id: string, ownerId: string): Promise<boolean> {
+    const document = this.documents.get(id);
+    if (!document || document.ownerId !== ownerId) return false;
+    this.vectorChunks.forEach((chunk, chunkId) => {
+      if (chunk.documentId === id) this.vectorChunks.delete(chunkId);
+    });
     return this.documents.delete(id);
   }
 
@@ -86,9 +92,9 @@ export class MemStorage implements IStorage {
     return this.messages.get(id);
   }
 
-  async getMessagesBySession(sessionId: string): Promise<Message[]> {
+  async getMessagesBySession(sessionId: string, ownerId: string): Promise<Message[]> {
     return Array.from(this.messages.values())
-      .filter(msg => msg.sessionId === sessionId)
+      .filter(msg => msg.sessionId === sessionId && msg.ownerId === ownerId)
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   }
 
@@ -105,18 +111,19 @@ export class MemStorage implements IStorage {
   }
 
   // Chat Sessions
-  async getChatSession(id: string): Promise<ChatSession | undefined> {
-    return this.chatSessions.get(id);
+  async getChatSession(id: string, ownerId?: string): Promise<ChatSession | undefined> {
+    const session = this.chatSessions.get(id);
+    return session && (!ownerId || session.ownerId === ownerId) ? session : undefined;
   }
 
-  async getAllChatSessions(): Promise<ChatSession[]> {
-    return Array.from(this.chatSessions.values()).sort((a, b) => 
+  async getAllChatSessions(ownerId: string): Promise<ChatSession[]> {
+    return Array.from(this.chatSessions.values()).filter(session => session.ownerId === ownerId).sort((a, b) =>
       new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
     );
   }
 
-  async createChatSession(insertSession: InsertChatSession): Promise<ChatSession> {
-    const id = randomUUID();
+  async createChatSession(insertSession: InsertChatSession, requestedId?: string): Promise<ChatSession> {
+    const id = requestedId || randomUUID();
     const session: ChatSession = {
       ...insertSession,
       id,
@@ -157,8 +164,10 @@ export class MemStorage implements IStorage {
     return chunk;
   }
 
-  async searchVectorChunks(embedding: number[], limit: number = 5): Promise<Array<VectorChunk & { similarity: number }>> {
-    const chunks = Array.from(this.vectorChunks.values());
+  async searchVectorChunks(embedding: number[], ownerId: string, limit: number = 5): Promise<Array<VectorChunk & { similarity: number }>> {
+    const chunks = Array.from(this.vectorChunks.values()).filter(
+      chunk => this.documents.get(chunk.documentId)?.ownerId === ownerId,
+    );
     
     // Calculate cosine similarity
     const similarities = chunks.map(chunk => {

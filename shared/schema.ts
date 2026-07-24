@@ -5,6 +5,7 @@ import { z } from "zod";
 
 export const documents = pgTable("documents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: text("owner_id").notNull(),
   filename: text("filename").notNull(),
   content: text("content").notNull(),
   fileType: text("file_type").notNull(),
@@ -19,6 +20,7 @@ export const documents = pgTable("documents", {
 
 export const messages = pgTable("messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: text("owner_id").notNull(),
   content: text("content").notNull(),
   role: text("role").notNull(), // user, assistant, system
   sessionId: text("session_id").notNull(),
@@ -28,6 +30,7 @@ export const messages = pgTable("messages", {
 
 export const chatSessions = pgTable("chat_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: text("owner_id").notNull(),
   title: text("title"),
   lastMessageAt: timestamp("last_message_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

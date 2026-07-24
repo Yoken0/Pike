@@ -24,7 +24,7 @@ export default function ChatInput({ sessionId, quotaRemaining }: { sessionId: st
     mutationFn: async (file: File) => {
       if (file.size > 10 * 1024 * 1024) throw new Error("Files must be 10 MB or smaller.");
       const body = new FormData(); body.append("file", file);
-      const response = await fetch("/api/documents/upload", { method: "POST", body });
+      const response = await fetch("/api/documents/upload", { method: "POST", body, credentials: "include" });
       if (!response.ok) throw new Error((await response.json()).error || "Upload failed");
       return response.json();
     },
